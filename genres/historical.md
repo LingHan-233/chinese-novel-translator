@@ -1,0 +1,8 @@
+<!-- Genre module for historical / court / officialdom / palace novels (古装, 官场, 宫斗, 历史架空). Included in task files when genre = historical. -->
+- Register: readable modern English with a slightly formal edge in court speech. No fake old English (thee, thou, 'tis). Rank shows in word choice and politeness, not archaic grammar.
+- Ruler: 陛下 → Your Majesty; 皇上 (spoken to) → Your Majesty, (about) the Emperor; 朕 → usually plain "I" with a commanding tone; the royal "We" only if the character table says so. 太子 → the Crown Prince; 公主 → Princess.
+- Officials: 县令/知县 → County Magistrate; 县太爷 → His Honor the Magistrate (folksy); 大人 → my lord / Your Excellency (pick one per book); 县丞 → Assistant Magistrate; 主簿 → Registrar; 教谕 → county education officer; 衙门 → yamen, explained once ("the yamen, the county's government office"); 捕快 → constable.
+- Household: 老爷 → Master (head of the house); 少爷 → Young Master; 小姐 → Miss / Young Miss; 夫人 → Madam / Lady; 奴/奴婢/小的 (self) → "I" with humble wording, or "this servant" only as a deliberate marker. Keep the levels distinct: if a character corrects how they are addressed (老爷 → 少爷), the English must show the same correction.
+- Money and time: 两/银子 → taels of silver; 文 → copper coins; 时辰 → "hour" (or "a couple of hours" for precision); 一盏茶 → "the time it takes to drink a cup of tea" when timing matters, else "a short while".
+- Exams and titles: 科举 → the imperial examinations; 状元 → top scorer in the palace examination, explained once.
+- Anachronism jokes (a magistrate using modern slogans like 招商引资): make the English sound unmistakably modern and bureaucratic ("investment promotion drive"), so the clash stays funny.
