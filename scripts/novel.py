@@ -27,7 +27,7 @@ from html.parser import HTMLParser
 from pathlib import Path
 import xml.etree.ElementTree as ET
 
-VERSION = "0.7.0"
+VERSION = "0.7.1"
 SKILL_DIR = Path(__file__).resolve().parent.parent
 HOME_NAME = "novel-translations"
 
@@ -77,6 +77,7 @@ STYLE_LINT = [
 # ----- numbers: compare what the English says with what the Chinese says
 CN_DIGIT = {"零": 0, "〇": 0, "一": 1, "二": 2, "两": 2, "三": 3, "四": 4, "五": 5, "六": 6,
             "七": 7, "八": 8, "九": 9}
+CN_IMPLIED = {"俩": 2, "双": 2, "对": 2, "仨": 3, "半": 2, "孪": 2, "两": 2}  # 俩人, 双剑, 一对, 仨, 半 (half)
 CN_UNIT = {"十": 10, "百": 100, "千": 1000, "万": 10000, "亿": 100000000}
 CN_NUM_RE = re.compile(r"[0-9０-９][0-9０-９,，.]*|[零〇一二两三四五六七八九十百千万亿]+")
 EN_UNITS = {w: i for i, w in enumerate(
@@ -93,7 +94,9 @@ EN_SCALE = {"hundred": 100, "thousand": 1000, "million": 1000000, "billion": 100
 
 
 def cn_numbers(text):
-    vals = set()
+    vals = set(v for ch, v in CN_IMPLIED.items() if ch in text)
+    if re.search(r"[他她它你我]们|众人|大家|诸位|二人|两人", text):
+        vals.add(2)  # "the two of them" for 他们 / 二人
     # 八成 = 80% = "eight in ten"
     for m in re.finditer(r"([一二两三四五六七八九十])成", text):
         n = CN_DIGIT.get(m.group(1), 10)
@@ -742,6 +745,7 @@ def cmd_candidates(args):
         out("  " + "  ".join(line))
     if not ranked:
         out("  (nothing new found)")
+    scan_stand_ins(book, known)
     nxt("Write the real names and terms into a file such as work/bible_notes.md using lines like\n"
         "  CHAR: 林凡 | Lin Fan | male | protagonist, calls himself 老子 when angry | 小凡/林哥\n"
         "  TERM: 青云宗 | Azure Cloud Sect | sect | \n"
@@ -750,6 +754,47 @@ def cmd_candidates(args):
         "makes it clear (他/她, 师兄/师姐, 公子/姑娘); otherwise write unknown - never guess from "
         "the name. Ask the user to check genders and fill bible/synopsis.md if they know the "
         "book. Then run `" + py_cmd() + " next`.")
+
+
+COMMON_DOUBLED = set(
+    "常渐慢刚妈爸哥姐弟妹爷奶叔舅姥婆公伯姑宝星往偏天年人处个默轻静紧微悄好久时纷匆连稍隐淡冷深狠"
+    "重缓远早统仅白生足呵哈嘿嘻嗯啊哼呜嘤咚轰哒滴啪砰谢看想试说走等种样句声步层道条片点丝阵团家事区"
+    "堂赫茫滚腾熊蒙楚翩姗涛哗呼嗡叮咕噗嘎嘶哦唉喂嗷呃咳咦哇哎嗒噼滋扑沙簌汪喵蹭飕刷咔吱叽咯嘀唰"
+    "怔愣暗明高低大小多少快真恰频频屡屡源源恰恰苦苦乖乖实实明明暗暗来去上下左右前后东西南北口心眼手")
+
+
+def scan_stand_ins(book, known):
+    """Point out doubled words (金金, 牛牛) and shared stand-in words anywhere in the book."""
+    text_parts = []
+    for ch in book.cfg["chapters"]:
+        if ch.get("skip"):
+            continue
+        for cid in ch["chunks"]:
+            text_parts.extend(book.source(cid)["paras"])
+    text = "\n".join(text_parts)
+    slang_terms = {r.get("term") for r in book.slang()}
+    doubled = Counter(m.group(0) for m in re.finditer(r"([\u4e00-\u9fff])\1", text)
+                      if m.group(1) not in COMMON_DOUBLED)
+    doubled = [(c, w) for w, c in doubled.items()
+               if c >= 3 and w not in known and w not in slang_terms]
+    doubled.sort(reverse=True)
+    stand_ins = []
+    for r in book.slang():
+        if "stand-in" in (r.get("tone") or "") and r.get("term") in text:
+            stand_ins.append((text.count(r["term"]), r["term"]))
+    stand_ins.sort(reverse=True)
+    out("")
+    out("Doubled words in the whole book (金金, 牛牛 style). Most are harmless, but web novels "
+        "often use a cute doubled word or a homophone as a stand-in for a rude one. Look at "
+        "where the frequent ones are used:")
+    if doubled:
+        out("  " + "  ".join("%s(%d)" % (w, c) for c, w in doubled[:24]))
+    else:
+        out("  (none)")
+    if stand_ins:
+        out("Known stand-in words from the shared slang table that appear in this book "
+            "(check that the table's meaning fits this book; if not, add your own SLANG line):")
+        out("  " + "  ".join("%s(%d)" % (w, c) for c, w in stand_ins))
 
 
 # ---------------------------------------------------------- notes merging
@@ -1207,6 +1252,9 @@ Check:
 - **Tone.** Insult stays insult, sarcasm stays sarcastic, humble stays humble.
 - **Every clause there, nothing added.**
 - **Slang and stand-in words** translated by their real meaning, not word for word.
+- **Reads fine but makes no sense** (a herb growing on someone's arm, gold being plucked off a
+  beast): that is usually a stand-in word nobody listed yet. Fix it, and add a SLANG line to
+  your notes so every later passage gets it right.
 
 If a paragraph is wrong, fix **only that paragraph** in `work/current_output.md` (keep its marker).
 Do not touch the other paragraphs. If everything is right, change nothing.
@@ -1298,7 +1346,9 @@ For every paragraph, compare DRAFT with ZH and fix any of these:
 - **Tone.** An insult stays an insult, sarcasm stays sarcastic, a humble line stays humble.
 - **Left out or added.** Every clause of ZH is there, nothing extra (no added greetings or explanations).
 - **Slang and stand-in words.** An innocent word used in place of a rude one (牛至 for 牛子,
-  河蟹 for 和谐) must not be translated literally: check the slang table.
+  河蟹 for 和谐) must not be translated literally: check the slang table. If a sentence reads
+  fine but makes no sense in the scene, it is probably a stand-in nobody listed yet: fix it and
+  add a SLANG line to your notes.
 - **Jokes and wordplay.** Is the joke still funny in English? If a pun was lost, try to rebuild it
   with an English word that has the same double meaning. If you can't, keep the meaning.
 
