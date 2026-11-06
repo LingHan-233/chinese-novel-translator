@@ -84,7 +84,19 @@ long book), tell the user; the translation still works, only titles will be miss
    avoid (comma-separated)`. The last field lets `check` warn when the literal word shows up.
    The shared table `slang/zh_internet_slang.tsv` already has common ones; book lines override it.
 4. Run `novel.py add work/bible_notes.md`.
-5. If the user knows the book, ask them to check the genders and, if they like, fill in
+5. **Scan for stand-in words** (one time, a few minutes):
+   - `novel.py scan` picks suspicious words from the whole book (shared-table stand-ins it
+     uses, noun-like doubled words) and writes `work/scan_task.md` with several examples of each.
+   - Read it and write one `VERDICT:` line per word into `work/scan_result.md`, as the task
+     explains. **Literal is the default**: call a word a stand-in only when several examples
+     make no sense literally. Say `low` when unsure; a person will decide.
+   - `novel.py scan-apply`. High-confidence stand-ins go into the slang list, high-confidence
+     literal words are switched off, and everything uncertain becomes a flag.
+   - Show the user the result and ask about the flagged words; record their answers as
+     `SLANG:` / `NOSLANG:` lines and `novel.py add` them. Run `scan` again until it says
+     nothing new (it shows at most 30 words at a time).
+   - This step is cheap but matters: use a stronger model for it if the user has one.
+6. If the user knows the book, ask them to check the genders and, if they like, fill in
    `novel-translations/<book>/bible/synopsis.md`. This is optional.
 
 ## Step 3 — The translation loop
@@ -177,6 +189,7 @@ Give the user the files. You can build at any time to show progress.
 | `novel.py set review off` | no review: cheapest, flipped meanings go unnoticed |
 | `novel.py set-char 苏晴 gender female` | change a character's gender, note or nicknames |
 | `novel.py rename 中文 "English"` | change a name or term on purpose (`--fix-done` also updates finished passages) |
+| `novel.py scan` / `scan-apply` | let the model judge suspicious words (stand-ins) with examples from the whole book |
 | `novel.py pin 3 P4-P7 [--en file] [--why "..."]` | save paragraphs as a style example for this book, optionally with edited English |
 | `novel.py flags` | list the places marked for a human to check |
 | `novel.py skip 2` / `unskip 2` | leave a chapter out of the translation (or put it back) |

@@ -27,7 +27,7 @@ from html.parser import HTMLParser
 from pathlib import Path
 import xml.etree.ElementTree as ET
 
-VERSION = "0.7.2"
+VERSION = "0.8.0"
 SKILL_DIR = Path(__file__).resolve().parent.parent
 HOME_NAME = "novel-translations"
 
@@ -762,7 +762,8 @@ def cmd_candidates(args):
         "then run `" + py_cmd() + " add work/bible_notes.md`. Gender: write it only when the text "
         "makes it clear (他/她, 师兄/师姐, 公子/姑娘); otherwise write unknown - never guess from "
         "the name. Ask the user to check genders and fill bible/synopsis.md if they know the "
-        "book. Then run `" + py_cmd() + " next`.")
+        "book. Then run `" + py_cmd() + " scan` to let the model judge the suspicious words "
+        "(stand-ins), and after that `" + py_cmd() + " next`.")
 
 
 COMMON_DOUBLED = set(
@@ -1969,6 +1970,208 @@ def cmd_set_char(args):
     fail("%s is not in the character list." % args.zh)
 
 
+# ------------------------------------------------------------------ scan
+# The model looks at suspicious words with several examples from the whole book and decides
+# whether each is a stand-in (an innocent word used for a rude one) or meant literally.
+
+SCAN_DONE_HEADER = ["term", "verdict", "confidence", "note"]
+
+
+def scan_done(book):
+    return {r.get("term"): r for r in read_tsv(book.bible / "scan_done.tsv")}
+
+
+def book_paragraphs(book):
+    """(chapter label, paragraph) for every paragraph that is not left out."""
+    rows = []
+    for ch in book.cfg["chapters"]:
+        if ch.get("skip"):
+            continue
+        label = ch.get("title") or ("front matter" if ch.get("front") else "chapter %d" % ch["n"])
+        for cid in ch["chunks"]:
+            for p in book.source(cid)["paras"]:
+                rows.append((label, p))
+    return rows
+
+
+def spread_examples(paras, word, k, width=40):
+    hits = [(lab, p) for lab, p in paras if word in p]
+    if not hits:
+        return []
+    if len(hits) > k:
+        step = (len(hits) - 1) / float(k - 1) if k > 1 else 0
+        hits = [hits[int(round(i * step))] for i in range(k)]
+    out_rows = []
+    for lab, p in hits:
+        i = p.find(word)
+        a, b = max(0, i - width), min(len(p), i + len(word) + width)
+        text = ("..." if a > 0 else "") + p[a:i] + "«" + word + "»" + p[i + len(word):b] + \
+            ("..." if b < len(p) else "")
+        out_rows.append((lab, text))
+    return out_rows
+
+
+SCAN_TASK = """# SCAN TASK - words that might be stand-ins
+
+Web novels sometimes use an innocent word in place of a rude or taboo one: a herb name that
+sounds like a crude word (牛至 for 牛子), or a cute doubled word (牛牛). Translated literally,
+such a word reads fine but makes nonsense ("the oregano on his arm"). Below are {n} words from
+this book, each with examples from different parts of the book. Decide what each one means
+**in this book**.
+
+## How to decide
+- **Literal is the default.** Most words mean exactly what they say. Say "stand-in" only when
+  at least two examples make no sense if read literally, and make sense with the other meaning.
+- The same word can be a stand-in in one book and literal in another. A 牛牛 can be a calf or a
+  child's nickname; 小兄弟 is usually just "a young man"; 开车 is usually just driving. The
+  "shared table says" note is only a hint about what the word *can* mean.
+- A doubled word used as a pet name, a person's nickname or a sound is literal.
+- Confidence: **high** only if the examples clearly point one way. Otherwise **low**: a person
+  will look at it. Never guess high to be helpful; a wrong "stand-in" spoils every later
+  passage where the word is meant normally.
+
+## What to write
+Write one line per word into `work/scan_result.md`, nothing else:
+
+    VERDICT: 词 | stand-in | high | what it stands for | tone | suggested English | how to handle | literal English to avoid (comma-separated)
+    VERDICT: 词 | literal | high | what it means here (e.g. a young man; a calf named 牛牛)
+    VERDICT: 词 | unsure | low | why (what the examples suggest)
+
+A stand-in line may also use low confidence. Write the English parts in English.
+Example lines:
+
+    VERDICT: 牛至 | stand-in | high | stand-in for 牛子 (penis); the herb name is the joke | deadpan, crude | his johnson | same English every time | oregano
+    VERDICT: 小兄弟 | literal | high | "young man", a friendly form of address
+
+Then run: `{cmd} scan-apply`
+
+## Words
+{words}
+"""
+
+
+def cmd_scan(args):
+    book = workspace_from_args(args)
+    paras = book_paragraphs(book)
+    text = "\n".join(p for _, p in paras)
+    known = set()
+    for r in book.glossary():
+        known.update(variants(r.get("zh")))
+    for r in book.characters():
+        known.update(variants(r.get("zh"), r.get("aliases")))
+    extra = {r.get("term") for r in read_tsv(book.bible / "slang_extra.tsv")}
+    decided = set(scan_done(book)) | extra | book.slang_off()
+    shared = read_tsv(SKILL_DIR / "slang" / "zh_internet_slang.tsv")
+    shared_terms = {r.get("term") for r in shared}
+    cands = []
+    for r in shared:
+        t = r.get("term", "")
+        if t in decided or t not in text:
+            continue
+        if "stand-in" in (r.get("tone") or "") or "ONLY" in (r.get("strategy") or ""):
+            cands.append((t, text.count(t), "shared table says it can mean: " + r.get("meaning", "")))
+    for w, n, noun in doubled_candidates(text, known | decided | shared_terms, limit=args.max_words):
+        if noun >= 0.2:
+            cands.append((w, n, "doubled word, used like a noun"))
+    cands = cands[: args.max_words]
+    if not cands:
+        out("Nothing new to scan: every suspicious word has been decided.")
+        nxt(next_action(book))
+        return
+    blocks = []
+    for i, (w, n, why) in enumerate(cands, 1):
+        ex = spread_examples(paras, w, args.examples)
+        lines = ["### W%d  %s  (%d times; %s)" % (i, w, n, why)]
+        lines += ["- E%d (%s): %s" % (j, lab, t) for j, (lab, t) in enumerate(ex, 1)]
+        blocks.append("\n".join(lines))
+    body = SCAN_TASK.format(n=len(cands), cmd=py_cmd(), words="\n\n".join(blocks))
+    book.work.mkdir(exist_ok=True)
+    (book.work / "scan_task.md").write_text(show_paths(body), encoding="utf-8")
+    (book.work / "scan_result.md").write_text("", encoding="utf-8")
+    book.cfg["scan"] = [w for w, _, _ in cands]
+    book.save()
+    out("Scan task written with %d word(s): %s" % (len(cands), ", ".join(w for w, _, _ in cands)))
+    out("Task file: " + str(book.work / "scan_task.md"))
+    nxt("Read work/scan_task.md, write one VERDICT line per word to work/scan_result.md, then run `"
+        + py_cmd() + " scan-apply`.")
+
+
+def cmd_scan_apply(args):
+    book = workspace_from_args(args)
+    words = book.cfg.get("scan") or []
+    if not words:
+        fail("No scan is open.", "Run `" + py_cmd() + " scan`.")
+    path = book.work / "scan_result.md"
+    text = path.read_text(encoding="utf-8") if path.exists() else ""
+    verdicts, problems = {}, []
+    for raw in text.splitlines():
+        line = raw.strip().lstrip("-*").strip()
+        if not line.upper().startswith("VERDICT:"):
+            continue
+        f = [x.strip() for x in line.split(":", 1)[1].split("|")]
+        if len(f) < 4:
+            problems.append("Too few fields: " + line)
+            continue
+        term, kind, conf = f[0], f[1].lower(), f[2].lower()
+        if term not in words:
+            problems.append("Not one of the scanned words: " + term)
+            continue
+        if kind not in ("stand-in", "literal", "unsure") or conf not in ("high", "low"):
+            problems.append("Use stand-in/literal/unsure and high/low: " + line)
+            continue
+        if kind == "stand-in" and (len(f) < 6 or not f[5] or has_cjk(f[5])):
+            problems.append("A stand-in line needs: meaning | tone | English suggestion | how to "
+                            "handle | literal words to avoid: " + line)
+            continue
+        verdicts[term] = f
+    missing = [w for w in words if w not in verdicts]
+    if problems or missing:
+        for p in problems:
+            out("ERROR: " + p)
+        if missing:
+            out("ERROR: No verdict yet for: " + ", ".join(missing))
+        nxt("Fix work/scan_result.md and run `" + py_cmd() + " scan-apply` again.")
+        sys.exit(1)
+    shared_terms = {r.get("term") for r in read_tsv(SKILL_DIR / "slang" / "zh_internet_slang.tsv")}
+    slang_rows, off_terms, flags, done_rows = [], [], [], []
+    summary = {"stand-in": [], "literal": [], "check": []}
+    for w in words:
+        f = verdicts[w] + [""] * 8
+        kind, conf = f[1].lower(), f[2].lower()
+        if kind == "stand-in" and conf == "high":
+            slang_rows.append({"term": w, "meaning": f[3], "tone": f[4], "default_en": f[5],
+                               "strategy": f[6], "avoid": f[7]})
+            summary["stand-in"].append(w)
+        elif kind == "literal" and conf == "high":
+            if w in shared_terms:
+                off_terms.append(w)
+            summary["literal"].append(w)
+        else:
+            flags.append({"chunk": "scan", "chapter": "", "para": w,
+                          "note": "%s (%s confidence): %s" % (kind, conf, " | ".join(x for x in f[3:8] if x))})
+            summary["check"].append(w)
+        done_rows.append({"term": w, "verdict": kind, "confidence": conf,
+                          "note": " | ".join(x for x in f[3:8] if x)})
+    for line in merge_slang(book, slang_rows) + merge_noslang(book, off_terms):
+        out(line)
+    old = [r for r in read_tsv(book.bible / "scan_done.tsv") if r.get("term") not in words]
+    write_tsv(book.bible / "scan_done.tsv", SCAN_DONE_HEADER, old + done_rows,
+              ["Words the scan has decided. Delete a line to have it scanned again."])
+    if flags:
+        rows = read_tsv(book.bible / "flags.tsv") + flags
+        write_tsv(book.bible / "flags.tsv", ["chunk", "chapter", "para", "note"], rows,
+                  ["Places the translator was unsure about. Show these to the user."])
+    book.cfg["scan"] = None
+    book.save()
+    out("Stand-in (added to the slang list): " + (", ".join(summary["stand-in"]) or "none"))
+    out("Literal (no special handling): " + (", ".join(summary["literal"]) or "none"))
+    out("For the user to check (saved as flags): " + (", ".join(summary["check"]) or "none"))
+    nxt("Show the user these three lists, with the examples for the 'check' words from "
+        "work/scan_task.md, and ask what each means. Record their answers as SLANG: or NOSLANG: "
+        "lines and run `" + py_cmd() + " add <file>`. Run `" + py_cmd() + " scan` again to see "
+        "whether more words are waiting; when it says nothing new, " + next_action(book))
+
+
 def cmd_flags(args):
     book = workspace_from_args(args)
     rows = read_tsv(book.bible / "flags.tsv")
@@ -2224,6 +2427,13 @@ def main():
     p.add_argument("--top", type=int, default=80)
     p.add_argument("--min-count", type=int, default=3)
     p.set_defaults(func=cmd_candidates)
+
+    p = sub.add_parser("scan", help="let the model judge suspicious words (stand-ins) with examples from the whole book")
+    p.add_argument("--max-words", type=int, default=30)
+    p.add_argument("--examples", type=int, default=4)
+    p.set_defaults(func=cmd_scan)
+
+    sub.add_parser("scan-apply", help="apply the VERDICT lines from work/scan_result.md").set_defaults(func=cmd_scan_apply)
 
     p = sub.add_parser("add", help="add TERM:/CHAR: lines from a notes file to the bible")
     p.add_argument("file")

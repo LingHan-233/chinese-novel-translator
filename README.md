@@ -1,4 +1,4 @@
-# Chinese Novel Translator (v0.7.2)
+# Chinese Novel Translator (v0.8.0)
 
 Read Chinese web novels in English with your own AI agent.
 
@@ -13,6 +13,7 @@ Fast, low-cost models (the "flash" tier) translate well sentence by sentence but
 - A helper script splits the book into short passages and builds one small task file per passage. Each task file already contains the names, characters, slang and story context that passage needs.
 - After each passage the script **checks the output**: missing or merged paragraphs, leftover Chinese, commentary, summarising instead of translating, names that drift. The model fixes what it lists before moving on.
 - New names the model chooses are saved to a glossary and used in every later passage.
+- Before translating, the model scans the whole book for **stand-in words** (an innocent word used for a rude one, like 牛至 for 牛子) using several examples of each, so these jokes are not translated literally. Literal is the default; uncertain words are left for you to decide.
 
 The checks cover format and consistency, not meaning: a passed check does not prove a sentence was understood correctly. Two things raise quality the most:
 
@@ -77,6 +78,7 @@ This tool is for translating books **for your own private reading**. Do not post
 | `slang/zh_internet_slang.tsv` | Internet slang, web-novel jargon and stand-in words (谐音/委婉替代) with suggested English and literal translations to avoid |
 | `templates/` | Empty glossary, character list and synopsis |
 | `tests/sample_book.txt` | A short original sample novel to try the workflow |
+| `tests/scan_sample_a.txt`, `tests/scan_sample_b.txt` | Two short original stories for testing the stand-in scan (the same words are literal in one and stand-ins in the other) |
 
 ## Acknowledgements
 
