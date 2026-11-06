@@ -3,7 +3,7 @@ Japanese example pairs shown to the model when the target language is Japanese. 
 for this project (no copyrighted novels). Each section starts with "## [tags] title". Tags: general,
 xianxia, urban. The script picks up to two examples matching the book's genre plus general ones.
 Keep the idiom example first: it is the general example every book gets.
-DRAFT (v0.9.3): checked by the developer; not yet by a second model or a Japanese reader.
+DRAFT (v0.9.4): checked once by a second model (GLM); not yet by a Japanese reader.
 -->
 
 ## [general] Chinese idioms and net phrases: say it the Japanese way
@@ -26,7 +26,7 @@ ZH:
 JA:
 [[P1]] 扉が開いた。
 [[P2]] 彼女だった。
-[[P3]] 戸口に立つ周遠の手で、傘からまだ雨がしたたっている。部屋にいる相手を見て一瞬固まり、それから何事もなかったように、傘を壁に立てかけた。
+[[P3]] 戸口には周遠が立っていた。手にした傘から、まだしずくが落ちている。部屋にいる相手を見て一瞬固まり、それから何事もなかったように、傘を壁に立てかけた。
 [[P4]] 「メシ、食ったか？」
 Why: one-line paragraphs stay one line; no 彼は is added where Japanese does not need it; the awkward everyday greeting stays awkward.
 
@@ -59,6 +59,6 @@ ZH:
 JA:
 [[P1]] 【ピコン！　宿主への侮辱を検知。ざまぁシステム、起動しました。】
 [[P2]] 【初心者クエスト：相手に公衆の面前で謝罪させよ。報酬：現金十万元。】
-[[P3]] 陳陽は固まった。十万？　ポケットには二十三元五角しか残っていない。
-[[P4]] ルームメイトはベッドにぐったり寝転がっている。「もういいや。明日考えよ」
+[[P3]] 陳陽は固まった。十万？　ポケットには23.5元しか残っていない。
+[[P4]] ルームメイトはベッドにぐったり寝転がっている。「もういいや。明日考えよう」
 Why: panels read like a Japanese game (ピコン, クエスト); 打脸 becomes ざまぁ, the Japanese web-novel word for the same pleasure; money stays in yuan; 摆烂 becomes Japanese slang of the same strength, not an explanation.

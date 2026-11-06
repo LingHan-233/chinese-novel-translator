@@ -27,7 +27,7 @@ from html.parser import HTMLParser
 from pathlib import Path
 import xml.etree.ElementTree as ET
 
-VERSION = "0.9.3"
+VERSION = "0.9.4"
 SKILL_DIR = Path(__file__).resolve().parent.parent
 HOME_NAME = "novel-translations"
 
@@ -94,6 +94,14 @@ JA_STYLE_LINT = [
     (r"余光で|余光に", 1, "余光 copied - Japanese says 目の端で / 視界の隅で"),
     (r"管事", 1, "管事 is not a Japanese word - 取りまとめ役 / 世話役"),
     (r"一抹の", 2, "「一抹の」 repeated - say it directly (かすかに笑った)"),
+    (r"一(本|条)の(青|赤|黒|金|白)?龍", 1, "一条龙 copied - Japanese: just 青龍, or 一匹の龍 / 一体の龍"),
+    (r"低声で", 1, "低声 copied - Japanese says 小声で / 声を落として"),
+    (r"白い目を向け", 1, "白眼 - the Japanese phrase is 白い目で見る"),
+    (r"瓜を切り|菜を刻むように", 1, "砍瓜切菜 copied - Japanese says 豆腐を切るように / 苦もなく"),
+    (r"過江の", 1, "过江之鲫 copied - Japanese says 掃いて捨てるほど"),
+    (r"心事を", 1, "心事 is not a Japanese word - 考え事 / 悩み"),
+    (r"一博", 1, "一搏 copied - Japanese says 一か八か / 最後の賭け"),
+    (r"血の糸", 1, "血丝 copied - Japanese says 目が血走る"),
     (r"淡々と(言|告|答)|冷たく(言|告|答)", 1, "淡淡道/冷冷道 copied - let the line carry the tone, or an action beat"),
 ]
 
@@ -128,8 +136,9 @@ def cn_numbers(text):
     return vals
 
 
-def _number_runs(text, vals):
-    """Add the value of every run of digits or Chinese number characters in text to vals."""
+def _number_runs(text, vals, lenient=True):
+    """Add the value of every run of digits or Chinese number characters in text to vals.
+    lenient (the Chinese side): each digit counts too, so 两三个 gives 2 and 3."""
     for run in CN_NUM_RE.findall(text):
         if run[0] in "0123456789０１２３４５６７８９":
             digits = run.translate(str.maketrans("０１２３４５６７８９", "0123456789"))
@@ -143,7 +152,8 @@ def _number_runs(text, vals):
         for ch in run:
             if ch in CN_DIGIT:
                 num = CN_DIGIT[ch]
-                vals.add(num)  # lenient: 两三个 counts as 2 and 3
+                if lenient:
+                    vals.add(num)  # 两三个 counts as 2 and 3
             else:
                 unit = CN_UNIT[ch]
                 if unit >= 10000:
@@ -171,14 +181,14 @@ def ja_numbers(text):
     vals = set()
     text = JA_NUM_IDIOMS.sub("、", text.replace("億", "亿"))
     digits = re.sub(r"[零〇一二三四五六七八九十百千万亿]", "、", text)
-    _number_runs(digits, vals)
+    _number_runs(digits, vals, lenient=False)
     for m in JA_NUM_RUN_RE.finditer(text):
         rest = text[m.end():]
         if rest.startswith("数"):  # 十数秒, 百数十 = "a dozen or so": not an exact number
             continue
         if len(m.group(0)) == 1 and not JA_COUNTER_RE.match(rest):
             continue
-        _number_runs(m.group(0), vals)
+        _number_runs(m.group(0), vals, lenient=False)
     return vals
 
 
@@ -354,6 +364,9 @@ def text_size(text, lang="en"):
 LENGTH_LIMITS = {"en": (0.25, 1.7), "ja": (0.6, 3.0)}
 # paragraphs shorter than this (Chinese characters) are not length-checked
 LENGTH_MIN_ZH = {"en": 30, "ja": 15}
+# below 30 Chinese characters a natural Japanese line can be much shorter (这话说给谁听呢！ →
+# 誰に言っているんだ！ = 0.56), so the "too short" limit is looser there
+SHORT_PARA_LIMIT = {"ja": 0.4}
 
 
 # ----------------------------------------------------------------- utilities
@@ -1101,7 +1114,10 @@ def parse_slang(text):
             continue
         f += [""] * (6 - len(f))
         if not has_cjk(f[0]) or len(f[0]) < 2:
-            problems.append("SLANG term must be Chinese, at least 2 characters: " + f[0])
+            problems.append("SLANG term must be Chinese, at least 2 characters: %s. A single "
+                            "character would match inside ordinary words (蛋 in 鸡蛋) and spoil "
+                            "them. Translate it right where it appears, keep the same word each "
+                            "time, and add a FLAG line so a person knows." % f[0])
             continue
         rows.append({"term": f[0], "meaning": f[1], "tone": f[2], "default_en": f[3],
                      "strategy": f[4], "avoid": f[5]})
@@ -1861,7 +1877,7 @@ def run_checks(book, cid):
             total_en += wc
         if zc >= LENGTH_MIN_ZH.get(lang, 30):
             ratio = wc / float(zc)
-            if ratio < short_limit:
+            if ratio < (SHORT_PARA_LIMIT.get(lang, short_limit) if zc < 30 else short_limit):
                 warnings.append("[[%s]] is much shorter than the original - check nothing "
                                 "was left out." % m)
             elif ratio > long_limit:
@@ -1885,7 +1901,9 @@ def run_checks(book, cid):
     full_src = "\n".join(src_map.values())
     full_en = "\n".join(tr.values()).lower().replace("-", " ")
     rows = [(r, f) for r, f in entries_in(full_src, book.glossary())]
-    rows += [(r, f) for r, f in entries_in(full_src, book.characters(), "aliases")]
+    # characters: only when the main name is there. A nickname or form of address (陆师兄 for
+    # 陆香君) is rightly translated as that form (陸師兄 / Senior Brother Lu), not the full name.
+    rows += [(r, f) for r, f in entries_in(full_src, book.characters())]
     for r, f in rows:
         en = (r.get("en") or "").strip()
         if not en:
@@ -2053,7 +2071,9 @@ def cmd_status(args):
     out("Chapters fully done: %d / %d" % (full, len(live)))
     skipped = [str(ch["n"]) for ch in book.cfg["chapters"] if ch.get("skip")]
     if skipped:
-        out("Left out: chapter(s) " + ", ".join(skipped))
+        out("Left out: chapter(s) " + (", ".join(skipped) if len(skipped) <= 12 else
+                                         ", ".join(skipped[:6]) + " ... " + skipped[-1] +
+                                         " (%d chapters)" % len(skipped)))
     out("Glossary entries: %d   Characters: %d" % (len(book.glossary()), len(book.characters())))
     fl = read_tsv(book.bible / "flags.tsv")
     if fl:
