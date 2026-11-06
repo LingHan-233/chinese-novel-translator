@@ -48,7 +48,9 @@ novel.py init "<path to book>" --genre <general|xianxia|urban|historical> [--lan
 
 `--lang ja` translates into Japanese. **For a Japanese book, read "English" in this file as
 "Japanese"**: TERM/CHAR/SLANG lines and examples hold Japanese; only SUMMARY lines stay in
-English. Names keep their kanji in Japanese form (苏晴 → 蘇晴); the task file explains how.
+English. The **first field of TERM/CHAR/SLANG lines is always the Chinese exactly as the book
+writes it** (`TERM: 青云宗 | 青雲宗 | sect |`), never the Japanese form: the script finds names
+in the source by that field. Names keep their kanji in Japanese form (苏晴 → 蘇晴); the task file explains how.
 The check rejects characters Japanese does not use (剑, 们, 这) and paragraphs without any kana.
 If a person's name really has a character with no Japanese form, allow it with
 `novel.py set keep_chars 玥` (only for names).

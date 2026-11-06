@@ -1,5 +1,5 @@
 <!-- Japanese version of core/names.md. Included in every task file when the target language is Japanese.
-DRAFT (v0.9.0): not yet checked by a Japanese reader. -->
+DRAFT (v0.9.1): checked once by a second model; not yet by a Japanese reader. -->
 ### Names and special terms
 
 **The tables in this task always win.** Use their Japanese exactly. Only choose a new form for a name that is not in the tables, and then list it as a TERM/CHAR line in your notes so it stays the same in later passages.
@@ -12,6 +12,6 @@ Japanese readers can read Chinese characters, so most names keep their kanji:
 
 **Title prefixes are not names:** 代 = 代理, 副 = 副, 前 = 前; 秦代掌门 → 秦掌門代理 or 代理掌門の秦 (never a person called 秦代); 张副县令 → 張副県令.
 
-First time a reader meets something they cannot guess, add a few words inside the sentence, once ("臍の下にある力の溜まり場、丹田"). After that, use the bare term.
+First time a reader meets something they cannot guess, add a few words inside the sentence, once ("臍の下にある気の集まる場所、丹田"). After that, use the bare term.
 
 Real brands, apps and places use their usual Japanese names (微信 → WeChat, 支付宝 → アリペイ, 北京 → 北京).

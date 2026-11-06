@@ -27,7 +27,7 @@ from html.parser import HTMLParser
 from pathlib import Path
 import xml.etree.ElementTree as ET
 
-VERSION = "0.9.0"
+VERSION = "0.9.1"
 SKILL_DIR = Path(__file__).resolve().parent.parent
 HOME_NAME = "novel-translations"
 
@@ -246,7 +246,15 @@ JA_NUM_IDIOMS = re.compile(
     r"十分|万が一|万一|一応|一体|一緒|一瞬|一斉|一気|一番|一層|一旦|一向|唯一|統一|同一|"
     r"百も承知|千切|八つ当たり|四方八方|二度と|一度|一人|一つ|一言|一同|一方|一部|一切|万全|"
     r"万事|万能|千載一遇|一石二鳥|三日月|七夕|八百屋|十八番|五分五分|九死に一生|"
-    r"万歳|千差万別|一目|一息|一声|一歩|一礼|一行|一角|一面|一族|一門|一派")
+    r"万歳|千差万別|一目|一息|一声|一歩|一礼|一行|一角|一面|一族|一門|一派|"
+    r"十中八九|九分九厘|三枚肉|四六時中|七転八倒|四苦八苦|八方美人|三日坊主|一か八か|一挙一動|"
+    r"十人十色|百発百中|一触即発|二枚目|三枚目|一枚岩|唯一無二|一長一短|一進一退|千変万化|"
+    r"百戦錬磨|八つ裂き|五臓六腑|三拍子|七色|一心不乱|一目散|三々五々|再三|二の足|一石|"
+    r"一刻|一晩|一生|一時|一応|一筋|一種|一味|一流|一家|一般|一致|一変|一転|一新")
+
+
+# Chinese-only words written with characters Japanese also has (十几秒 = 十数秒).
+ZH_ONLY_WORDS = re.compile(r"[十百千万]几|几[十百千万个天年次人]|几乎|好几|没有|什么|怎么|为什么")
 
 
 def lang_info(code):
@@ -277,6 +285,10 @@ def leftover_chinese(text, lang="en", keep=""):
     for ch in CJK_RE.findall(text or ""):
         if ch not in keep and not is_japanese_char(ch) and ch not in bad:
             bad.append(ch)
+    words = ZH_ONLY_WORDS.findall(text or "")
+    if words and not bad:
+        return ("still contains Chinese words: %s. Write them in Japanese (十几秒 → 十数秒, "
+                "几天 → 数日)." % " ".join(words[:5])), words
     if not bad:
         return "", bad
     grammar = [c for c in bad if c in ZH_GRAMMAR]
@@ -300,6 +312,8 @@ def text_size(text, lang="en"):
 # too short / too long, in "translation size per Chinese character". English: words.
 # Japanese: characters (a Chinese passage usually becomes about 1.3-1.8 times as many).
 LENGTH_LIMITS = {"en": (0.25, 1.7), "ja": (0.6, 3.0)}
+# paragraphs shorter than this (Chinese characters) are not length-checked
+LENGTH_MIN_ZH = {"en": 30, "ja": 15}
 
 
 # ----------------------------------------------------------------- utilities
@@ -1114,6 +1128,39 @@ def parse_flags(text):
     return flags
 
 
+def found_in_book(book, terms, chars, near=""):
+    """Drop TERM/CHAR lines whose Chinese is nowhere in the book: such a line can never match
+    (青雲宗 written instead of the book's 青云宗) and would fail silently. `near` (the current
+    passage) is searched first so the whole book is only read when needed."""
+    whole = [None]
+    problems = []
+
+    def found(v):
+        if v in near:
+            return True
+        if whole[0] is None:
+            parts = []
+            for ch in book.cfg["chapters"]:
+                for cid in ch["chunks"]:
+                    src = book.source(cid)
+                    parts.append(src.get("title") or "")
+                    parts.extend(src["paras"])
+            whole[0] = "\n".join(parts)
+        return v in whole[0]
+
+    kept = ([], [])
+    for rows, out_rows, alias in ((terms, kept[0], None), (chars, kept[1], "aliases")):
+        for r in rows:
+            vs = variants(r["zh"], r.get(alias) if alias else "")
+            if any(found(v) for v in vs):
+                out_rows.append(r)
+            else:
+                problems.append("%s is not in the book. The first field must be the Chinese exactly "
+                                "as the book writes it (simplified 青云宗, not 青雲宗), even when the "
+                                "translation uses other characters. Line not saved." % r["zh"])
+    return kept[0], kept[1], problems
+
+
 def merge_bible(book, terms, chars):
     """Add new entries. Never overwrite existing ones; record conflicts instead."""
     report = []
@@ -1193,6 +1240,8 @@ def cmd_add(args):
         fail("Notes file not found: " + args.file)
     text = path.read_text(encoding="utf-8")
     _, terms, chars, problems = parse_notes(text, book.lang, book.keep_chars())
+    terms, chars, missing = found_in_book(book, terms, chars)
+    problems += missing
     slang_rows, slang_problems = parse_slang(text)
     for p in problems + slang_problems:
         out("SKIPPED: " + p)
@@ -1735,8 +1784,9 @@ def run_checks(book, cid):
         if problem:
             errors.append("[[%s]] %s" % (m, problem))
         elif lang == "ja" and cjk_count(zh) >= 12 and len(en) >= 20 and not KANA_RE.search(en):
-            errors.append("[[%s]] has no kana at all - it looks like it is still Chinese. "
-                          "Translate it into Japanese." % m)
+            errors.append("[[%s]] has no kana at all. If it is still Chinese, translate it. If it "
+                          "is Japanese, it reads like a notice board, not a novel: add the particles "
+                          "and endings a Japanese sentence needs (が, は, を, だ...)." % m)
         extra_nums = number_mismatch(zh, en, lang)
         for term, word in literal_slang(book, zh, en):
             warnings.append("Slang check: [[%s]] has %s, a slang/stand-in word, and the %s "
@@ -1752,7 +1802,7 @@ def run_checks(book, cid):
         if m != "T":
             total_zh += zc
             total_en += wc
-        if zc >= 30:
+        if zc >= LENGTH_MIN_ZH.get(lang, 30):
             ratio = wc / float(zc)
             if ratio < short_limit:
                 warnings.append("[[%s]] is much shorter than the original - check nothing "
@@ -1868,6 +1918,8 @@ def cmd_accept(args):
     notes_path = book.work / "current_notes.md"
     notes = notes_path.read_text(encoding="utf-8") if notes_path.exists() else ""
     summary, terms, chars, problems = parse_notes(notes, book.lang, book.keep_chars())
+    terms, chars, missing = found_in_book(book, terms, chars, passage_text(book.source(cid)))
+    problems += missing
     if not summary:
         fail("work/current_notes.md needs a SUMMARY: line (one or two sentences about this "
              "passage). It keeps later passages consistent.",
@@ -2425,7 +2477,8 @@ def cmd_scan_apply(args):
             + ", ".join(off_terms) + "  (undo: delete the line from bible/slang_off.txt)")
     out("For the user to check (saved as flags): " + (", ".join(summary["check"]) or "none"))
     nxt("Show the user these three lists, with the examples for the 'check' words from "
-        "work/scan_task.md, and ask what each means. Record their answers as SLANG: or NOSLANG: "
+        "work/scan_task.md, and ask what each means (if the user is not there, carry on: the "
+        "'check' words stay saved as flags for later). Record their answers as SLANG: or NOSLANG: "
         "lines and run `" + py_cmd() + " add <file>`. Run `" + py_cmd() + " scan` again to see "
         "whether more words are waiting; when it says nothing new, " + next_action(book))
 
@@ -2663,7 +2716,9 @@ def cmd_build(args):
     if not chapters:
         fail("Nothing is translated yet.", "Run `" + py_cmd() + " next`.")
     formats = [f.strip() for f in args.formats.split(",") if f.strip()]
-    stem = slugify(book.ws.name) + "-" + book.lang
+    stem = slugify(book.ws.name)
+    if not stem.endswith("-" + book.lang):
+        stem += "-" + book.lang
     outdir = book.ws / "output"
     outdir.mkdir(exist_ok=True)
     made = []
@@ -2677,7 +2732,8 @@ def cmd_build(args):
         build_epub(book, chapters, outdir / (stem + ".epub"))
         made.append(outdir / (stem + ".epub"))
     complete = sum(1 for c in chapters if c["complete"])
-    out("Built %d chapter(s) (%d complete)." % (len(chapters), complete))
+    total_ch = sum(1 for ch in book.cfg["chapters"] if not ch.get("skip"))
+    out("Built %d of %d chapter(s) (%d of them complete)." % (len(chapters), total_ch, complete))
     for p in made:
         out("  " + str(p))
     nxt("Give the user these files. The .epub opens in Apple Books, Google Play Books, "
