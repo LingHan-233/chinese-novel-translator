@@ -17,6 +17,9 @@ Avoid these translationese habits — use the natural alternative:
 | 说道 / 道 | 「〜と言った」 after every line | use it sparingly; action beats or nothing |
 | Chinese compounds kept as they are | 「迅速に移動し、攻撃を発動した」 | everyday Japanese verbs: 「素早く動いて斬りかかった」 |
 | 立了大功 / 看家本领 / 火烧眉毛 | 「大功一件」「看家の腕」「火が眉毛まで燃えている」 | 「大手柄だ」「十八番の腕」「尻に火がついている」 |
+| 走一步看一步 / 脑子进水 / 平地惊雷 | 「一歩進んでは一歩見る」「頭に水が入る」「平地に雷が落ちる」 | 「出たとこ勝負だ」「頭がどうかしている」「青天の霹靂」 |
+| 比哭还难看的笑 / 恍然 / 一扫而空 | 「泣くより醜い笑み」「得心した」「澱んでいたものが一掃された」 | 「泣き笑いのような顔」「合点がいった」「胸のつかえが取れた」 |
+| measure words (一张脸, 一道金光) | 「一張りの顔」「一道の金光」 | 「顔」「ひと筋の金光」 — Japanese counts differently or not at all |
 | long の chains | 「宗門の長老の弟子の剣」 | rebuild the phrase |
 
 Keep the energy: ！ only where the original shouts; no ellipsis chains beyond what the original has.

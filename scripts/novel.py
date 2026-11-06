@@ -27,7 +27,7 @@ from html.parser import HTMLParser
 from pathlib import Path
 import xml.etree.ElementTree as ET
 
-VERSION = "0.9.1"
+VERSION = "0.9.2"
 SKILL_DIR = Path(__file__).resolve().parent.parent
 HOME_NAME = "novel-translations"
 
@@ -134,11 +134,30 @@ def _number_runs(text, vals):
         vals.add(total + section + num)
 
 
+# A single number kanji only counts as a quantity when a counter or unit follows it (三回, 二人,
+# 三メートル), so 二の腕 or 一石二鳥 are left out. Longer number words (三万, 九十九) always count,
+# except before 数 (十数秒 = "a dozen seconds or so").
+JA_COUNTER_RE = re.compile(
+    r"(?:[つ人回度日年月歳才秒分時週晩夜代世歩本個匹頭羽枚杯冊台軒件品皿粒滴尺丈里斤両寸名位番階層段"
+    r"章条句字円元銭倍割成部隊組撃発柱筋着足輪隻基張面戸家種色重門合刻里間ヶヵケかカ]|メートル|"
+    r"キロ|センチ|パーセント|グラム|トン|ミリ|%|％)")
+JA_NUM_RUN_RE = re.compile(r"[零〇一二三四五六七八九十百千万亿]+")
+
+
 def ja_numbers(text):
-    """Numbers a Japanese translation states: digits and kanji numbers (一万, 三百),
-    leaving out words like 十分 (enough) or 一応 that only contain number kanji."""
+    """Numbers a Japanese translation states: digits always; kanji numbers only when a counter
+    follows (三回, 一万人), so words like 二の腕, 十数秒 or 十中八九 are not read as numbers."""
     vals = set()
-    _number_runs(JA_NUM_IDIOMS.sub("、", text.replace("億", "亿")), vals)
+    text = JA_NUM_IDIOMS.sub("、", text.replace("億", "亿"))
+    digits = re.sub(r"[零〇一二三四五六七八九十百千万亿]", "、", text)
+    _number_runs(digits, vals)
+    for m in JA_NUM_RUN_RE.finditer(text):
+        rest = text[m.end():]
+        if rest.startswith("数"):  # 十数秒, 百数十 = "a dozen or so": not an exact number
+            continue
+        if len(m.group(0)) == 1 and not JA_COUNTER_RE.match(rest):
+            continue
+        _number_runs(m.group(0), vals)
     return vals
 
 
@@ -1541,7 +1560,7 @@ Check:
 - **Title prefixes.** 代 = acting, 副 = deputy/vice, 前 = former (秦代掌门 = Acting Sect Leader Qin).
 - **Tone.** Insult stays insult, sarcasm stays sarcastic, humble stays humble.
 - **Every clause there, nothing added.**
-- **Slang and stand-in words** translated by their real meaning, not word for word.
+{extra_checks}- **Slang and stand-in words** translated by their real meaning, not word for word.
 - **Reads fine but makes no sense** (a herb growing on someone's arm, gold being plucked off a
   beast): that is usually a stand-in word nobody listed yet. Fix it, and add a SLANG line to
   your notes so every later passage gets it right.
@@ -1559,6 +1578,17 @@ Then run: `{cmd} check`
 ## PARAGRAPHS TO CHECK
 {pairs}
 """
+
+
+# Extra review checks for a target language (the English review is unchanged).
+REVIEW_EXTRA = {
+    "ja": ("- **Chinese in Japanese clothing.** The most common slip: a Chinese idiom, net phrase or "
+           "measure word copied\n  into kanji. Grammatical, but no Japanese writer would say it: "
+           "火が眉毛まで燃える (火烧眉毛), 頭に水が入る\n  (脑子进水), 一歩進んでは一歩見る (走一步看一步), "
+           "一張りの顔 (一张脸), 泣くより醜い笑み (比哭还难看), AI顔交換\n  (AI换脸). Rewrite it the "
+           "way Japanese says it (尻に火がつく, 頭がどうかしている, 出たとこ勝負, 顔, 泣き笑い, "
+           "ディープフェイク).\n"),
+}
 
 
 def review_mode(book):
@@ -1614,7 +1644,8 @@ def write_polish_task(book, cid):
             pairs.append("[[P%d]]\nZH: %s\nDRAFT: %s" % (i, src["paras"][i - 1],
                                                        draft.get("P%d" % i, "")))
         body = SPOT_REVIEW.format(cid=cid, cmd=py_cmd(), picked=", ".join("P%d" % i for i in picked),
-                                  gl=gl, ch=ch, pairs="\n\n".join(pairs), lname=book.lname)
+                                  gl=gl, ch=ch, pairs="\n\n".join(pairs), lname=book.lname,
+                                  extra_checks=REVIEW_EXTRA.get(book.lang, ""))
         (book.work / "current_task.md").write_text(show_paths(body), encoding="utf-8")
         return
     if src["part"] == 1 and src.get("title"):
@@ -1641,7 +1672,7 @@ For every paragraph, compare DRAFT with ZH and fix any of these:
   add a SLANG line to your notes.
 - **Jokes and wordplay.** Is the joke still funny in {lname}? If a pun was lost, try to rebuild it
   with {a_lname} word that has the same double meaning. If you can't, keep the meaning.
-
+{extra_checks}
 ## Step 2 - {lname}
 Then make it read like a good {lname} novel: natural rhythm, varied sentences, clear dialogue,
 no translationese (see the style table). Keep the author's tone; don't add flourishes.
@@ -1668,7 +1699,8 @@ In your notes later, add a FLAG line for any paragraph you are still unsure abou
 {pairs}
 """.format(cid=cid, n=len(src["paras"]), cmd=py_cmd(), gl=gl, ch=ch, sl=sl, style=style,
            pairs="\n\n".join(pairs), lname=book.lname,
-           a_lname=("an " if book.lname[0] in "AEIOU" else "a ") + book.lname)
+           a_lname=("an " if book.lname[0] in "AEIOU" else "a ") + book.lname,
+           extra_checks=REVIEW_EXTRA.get(book.lang, ""))
     (book.work / "current_task.md").write_text(show_paths(body), encoding="utf-8")
 
 
