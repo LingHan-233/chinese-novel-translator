@@ -66,7 +66,7 @@ Each passage is about 1,500 Chinese characters plus about 2,500 tokens of instru
 
 ## Please read
 
-This tool is for translating books **for your own private reading**. Do not post, share or sell the translations. If a book has an official English edition, read and support that one.
+This tool is for translating books **for your own private reading**. Only translate text you obtained legally. Do not post, share or sell the translations. If a book has an official English edition, read and support that one.
 
 ## What's inside
 
