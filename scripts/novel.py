@@ -27,7 +27,7 @@ from html.parser import HTMLParser
 from pathlib import Path
 import xml.etree.ElementTree as ET
 
-VERSION = "0.9.2"
+VERSION = "0.9.3"
 SKILL_DIR = Path(__file__).resolve().parent.parent
 HOME_NAME = "novel-translations"
 
@@ -74,6 +74,27 @@ STYLE_LINT = [
     (r"\bthe door (behind him |behind her )?was knocked\b", 1, "'the door was knocked' - 'someone knocked at the door'"),
     (r"\bthe fact that\b", 2, "'the fact that' repeated - rephrase"),
     (r"\b(slightly|faintly|lightly) (raised|curved|curled|lifted)\b", 2, "stacked 'slightly/faintly' - cut the adverb"),
+]
+
+# Chinese phrases copied into Japanese kanji, found in real test runs. Warnings only.
+JA_STYLE_LINT = [
+    (r"眉毛まで燃え|火が眉毛|眉に火が", 1, "火烧眉毛 copied - Japanese says 尻に火がつく / 一刻を争う"),
+    (r"頭に水", 1, "脑子进水 copied - Japanese says 頭がどうかしている / 正気か"),
+    (r"一歩進んでは一歩見", 1, "走一步看一步 copied - Japanese says 出たとこ勝負 / 様子を見ながら進む"),
+    (r"(泣く|泣き顔)より(も)?(醜い|ひどい)", 1, "比哭还难看 copied - try 今にも泣き出しそうな顔で / 引きつった笑み"),
+    (r"平地に雷", 1, "平地惊雷 copied - Japanese says 青天の霹靂"),
+    (r"AI(顔|換顔)", 1, "AI换脸 copied - Japanese says ディープフェイク"),
+    (r"看家の", 1, "看家本领 copied - Japanese says 十八番 / とっておき"),
+    (r"大功一件", 1, "立了大功 copied - Japanese says 大手柄"),
+    (r"一張りの|一道の", 1, "a Chinese measure word copied (一张/一道) - Japanese: just 顔, or ひと筋の光"),
+    (r"弁護士通知", 1, "律师函 copied - Japanese says 内容証明 / 弁護士からの警告書"),
+    (r"心中一驚|心の中で一驚", 1, "心中一惊 copied - Japanese says ぎくりとした / はっとした"),
+    (r"群魔乱舞|山呼海嘯|山が唸り海が嘯", 1, "a Chinese four-character phrase copied - say what it means in Japanese"),
+    (r"天生の", 1, "天生 is not used alone in Japanese - 生まれながらの / 生まれつきの"),
+    (r"余光で|余光に", 1, "余光 copied - Japanese says 目の端で / 視界の隅で"),
+    (r"管事", 1, "管事 is not a Japanese word - 取りまとめ役 / 世話役"),
+    (r"一抹の", 2, "「一抹の」 repeated - say it directly (かすかに笑った)"),
+    (r"淡々と(言|告|答)|冷たく(言|告|答)", 1, "淡淡道/冷冷道 copied - let the line carry the tone, or an action beat"),
 ]
 
 # ----- numbers: compare what the English says with what the Chinese says
@@ -708,7 +729,12 @@ class Book:
         Terms listed in bible/slang_off.txt are dropped."""
         off = self.slang_off()
         merged = {}
+        lang = self.lang
         for r in read_tsv(SKILL_DIR / "slang" / "zh_internet_slang.tsv"):
+            if lang != "en":  # the shared table has default_<lang> / avoid_<lang> columns
+                own = r.get("default_" + lang, "")
+                r = dict(r, default_en=own or (r.get("default_en", "") + " (English hint)"),
+                         avoid=r.get("avoid_" + lang, ""))
             merged[r.get("term", "")] = r
         for r in read_tsv(self.bible / "slang_extra.tsv"):
             merged[r.get("term", "")] = dict(r, book="yes")
@@ -1466,8 +1492,7 @@ def reference_tables(book, text):
                   [["/".join(f), r.get("en"), r.get("type"), r.get("note")] for r, f in g_hits])
     ch = md_table(["中文 (found)", book.lname, "gender", "note"],
                   [["/".join(f), r.get("en"), r.get("gender"), r.get("note")] for r, f in c_hits])
-    suggest = "suggested English" if book.lang == "en" else \
-        "suggested wording (if it is English, use the %s equivalent)" % book.lname
+    suggest = "suggested " + book.lname
     sl = md_table(["term", "meaning", "tone", suggest, "how to handle",
                    "never write (literal)"],
                   [[r.get("term") + (" (this book)" if r.get("book") else ""), r.get("meaning"),
@@ -1869,7 +1894,8 @@ def run_checks(book, cid):
         if not any(o in full_en for o in options):
             warnings.append("Name check: %s should appear as '%s' (fine if you used he/she or "
                             "another form on purpose)." % ("/".join(f), en))
-    for pattern, min_hits, advice in (STYLE_LINT if lang == "en" else []):
+    for pattern, min_hits, advice in (STYLE_LINT if lang == "en" else
+                                      JA_STYLE_LINT if lang == "ja" else []):
         where = [m for m, t in blocks if re.search(pattern, t, re.I)]
         total = sum(len(re.findall(pattern, t, re.I)) for _, t in blocks)
         if total >= min_hits:

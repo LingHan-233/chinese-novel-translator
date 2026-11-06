@@ -2,99 +2,100 @@
 # Avoid single characters and words whose normal meaning is common (they cause false matches).
 # strategy = how to handle it; 'ONLY' marks words that also have an ordinary meaning.
 # avoid = literal English words that would mean a word-for-word translation (comma-separated); check warns if they appear.
+# default_ja / avoid_ja = the same for Japanese books (avoid_ja = literal Japanese words).
 # Stand-in words (谐音/委婉替代): an innocent word used for a rude or taboo one. Mark them "stand-in" in tone.
-term	meaning	tone	default_en	strategy	avoid
-卧槽	exclamation of shock or amazement (vulgar)	crude, strong	Holy shit / What the hell / Damn	match strength to speaker; milder 'Whoa' for kids	
-我靠	exclamation of surprise or annoyance	crude, mild	Damn / Crap / What the—	match strength	
-牛逼	awesome, impressive (vulgar)	crude, admiring	badass / insane / awesome	as praise; 'damn good' in narration	cow, ox, bull
-666	praise: well played, impressive	online, playful	Nice! / GG / insane	short reaction; never write the digits	
-yyds	'eternal god': the absolute best	online, hype	the GOAT / undefeated	use 'the GOAT' for people, 'the best ever' for things	
-绝绝子	amazing, the best (trendy, often ironic)	trendy, gushy	absolutely iconic / chef's kiss	can be ironic: check context	
-绝了	incredible (good or ridiculous)	casual	Unreal / Incredible	decide praise vs disbelief from context	
-破防	emotionally broken through: deeply moved or hurt	online	that broke me / I'm wrecked	keep it short and dramatic	
-内卷	rat race, involution: pointless overcompetition	social commentary	the rat race / cutthroat grind	keep the bitterness	
-躺平	'lying flat': opting out of the rat race	social, resigned	giving up the hustle / opting out	verb form: 'just lie flat' only if the image is used	
-摆烂	deliberately stop trying, let it all fall apart	resigned, humorous	Screw it, I'm done trying	humorous defeat, not depression	
-社死	'social death': public humiliation	online, humorous	mortified / I want to die of embarrassment	comic exaggeration	
-打工人	wage slave (self-mocking)	self-deprecating	us working stiffs / corporate drones	self-mocking, warm	
-凡尔赛	humblebragging	mocking	humblebrag	verb: 'stop humblebragging'	
-吃瓜	watching drama unfold as a bystander	gossipy, amused	grab the popcorn / just here for the drama	吃瓜群众 = the onlookers	melon
-吃瓜群众	bystanders enjoying the drama	gossipy	onlookers / the peanut gallery	plural crowd	
-柠檬精	someone jealous of others' success	teasing	jealous much? / green with envy	teasing tone	lemon
-真香	'smells great': instantly breaking one's own vow	comic	...okay, never mind, this is great	comic reversal; keep the punchline	smells good
-杠精	someone who argues for the sake of arguing	annoyed	contrarian / troll	'Stop being a contrarian'	
-键盘侠	keyboard warrior	contemptuous	keyboard warrior	direct equivalent exists	
-舔狗	simp: someone who fawns over a crush	mocking	simp	noun and verb	licking dog
-白月光	the unattainable first love one idealises	romantic	the one that got away / first love	romance novels: often a key phrase; add to glossary	
-朱砂痣	the beloved who left a lasting mark (paired with 白月光)	romantic	the one who left a scar on his heart	often paired with 白月光	
-绿茶	girl who acts innocent but manipulates (only in the slang sense, not the drink)	catty	manipulative 'innocent' girl / fake sweetheart	ONLY if it is about a person	green tea
-白莲花	person who plays the pure victim	catty, sarcastic	the pure little innocent (sarcastic)	sarcasm in English	lotus
-恋爱脑	someone whose brain is all romance	mocking	lovesick fool / love-brained	casual	
-显眼包	attention seeker, the class clown	teasing, affectionate	show-off / class clown	affectionate teasing	
-大冤种	sucker who always loses out	self-mocking	total sucker / the fall guy	comic	
-普信男	mediocre but overconfident man	mocking	mediocre man with main-character confidence	keep the sting	
-中二	chuunibyou: teenage delusions of grandeur	teasing	edgy / chuunibyou	'edgy teen phase' in narration	
-二次元	anime/manga/game culture	neutral	anime fandom / the 2D world	context: fandom vs 'not real'	
-小鲜肉	young handsome male idol	playful	pretty boy / young heartthrob	light tone	
-高富帅	tall, rich and handsome guy	envious	tall, rich and handsome / Prince Charming	keep as the stock phrase	
-白富美	fair, rich and beautiful girl	envious	rich, beautiful girl / dream girl	stock phrase	
-土豪	nouveau riche, big spender	teasing	big spender / moneybags	teasing, sometimes admiring	
-装逼	show off, act cool (vulgar)	crude, mocking	show off / act all cool / flex	match vulgarity: 'flex' is milder	
-老铁	bro, buddy	casual, northern	bro / buddy	friendly	
-大佬	big shot, expert	admiring	big shot / boss / pro	gaming: 'pro'	
-萌新	newbie	self-deprecating	newbie / noob	'noob' is harsher	
-菜鸡	noob, weakling (mocking)	mocking	scrub / noob	gaming insult	
-开挂	using cheats; being unbelievably lucky or strong	envious	cheating / hacks / like he's got cheats on	'Is he hacking?'	
-金手指	the protagonist's special cheat ability	genre jargon	cheat / golden finger	in narration: 'his cheat'; add to glossary if central	
-主角光环	protagonist's halo: plot armour	meta, mocking	plot armor / protagonist's halo	'plot armor' reads naturally	
-扮猪吃虎	pretending to be weak to defeat others	genre jargon	playing the weakling / hiding his strength	describe the move, avoid the literal pig/tiger	
-打脸	humiliating someone by proving them wrong	genre jargon	face-slapping / put them in their place	literal 'slapping' only if a real slap happens	slap in the face
-逆袭	underdog comeback	triumphant	comeback / turning the tables	noun or verb	
-炮灰	cannon fodder, throwaway character	meta	cannon fodder	direct equivalent	
-单身狗	single person (self-mocking)	self-deprecating	forever alone / single loser	comic	single dog
-狗粮	PDA forced on single people ('dog food')	teasing	stop flaunting it / third-wheeling	describe; no literal dog food	dog food
-秀恩爱	showing off a relationship	teasing	flaunting their love / PDA	casual	
-我太难了	life is so hard for me (comic)	self-pitying, humorous	I can't catch a break	comic whining	
-扎心了	that hurt (a remark that stings)	humorous	ouch / that stings	short reaction	
-emo	feeling down, moody	online	feeling emo / down in the dumps	keep 'emo' if casual young speaker	
-栓Q	sarcastic 'thank you' (I'm speechless)	sarcastic	thanks, I hate it	sarcasm	
-芭比Q了	it's over, we're done for	humorous	we're toast / it's over	comic doom	
-YYDS	'eternal god': the absolute best	online, hype	the GOAT	same as yyds	
-社恐	social anxiety (casual self-label)	casual	socially awkward / introvert	casual self-label, not clinical	
-i人	introvert (from MBTI)	casual	introvert	casual	
-e人	extrovert (from MBTI)	casual	extrovert	casual	
-CPU	to manipulate someone emotionally (slang verb)	online	gaslight / mess with someone's head	only when used as a verb about people	
-PUA	emotional manipulation in a relationship	online	manipulate / gaslight	verb or noun	
-下头	a turn-off, instantly disgusted	casual	such a turn-off / ick	'That's the ick'	
-上头	hooked, obsessed (slang sense only)	casual	hooked / obsessed	ONLY slang sense; also means 'above' or 'the higher-ups'	
-瑞思拜	respect (from English)	playful	respect	just 'Respect.'	
-硬核	hardcore	admiring	hardcore	direct	
-佛系	laid-back, unbothered	casual	chill / zen about it	casual	
-戏精	drama queen, overactor	mocking	drama queen	direct	
-锦鲤	lucky charm person	playful	lucky charm	'You're my lucky charm'	koi
-学霸	top student	admiring	straight-A student / brainiac	casual	
-学渣	bad student	self-deprecating	slacker / failing student	casual	
-宅男	homebody / otaku guy	teasing	shut-in / otaku	context	
-格局	big-picture thinking, broad-mindedness (slang: 格局打开/格局小了)	playful, mock-wise	think bigger / small-minded	ONLY in the slang sense; also means "layout" (of a house, a situation)	
-尼玛	stand-in for 你妈 (your mother), used as a curse	stand-in, crude	damn / motherf— / what the hell	curse word; never a name	Nima
-草泥马	grass-mud horse: stand-in for 操你妈 (fuck your mother)	stand-in, crude, jokey	motherfucker / screw this	curse; keep the strength	alpaca, grass mud horse, grass-mud horse
-卧草	stand-in spelling of 卧槽	stand-in, crude	Holy shit / What the hell	same as 卧槽	lying grass, lie on grass
-河蟹	river crab: stand-in for 和谐 (harmony = censorship)	stand-in, wry	censored / scrubbed	censorship joke; ONLY when about censorship	river crab, crab
-被和谐	"harmonized" = censored, deleted	wry	got censored / got scrubbed	censorship joke	harmonized, harmonised
-沙雕	sand sculpture: stand-in for 傻屌 (dumbass), playful	stand-in, playful	idiot / dumbass / goofball	affectionate insult or "silly"	sand sculpture
-牛子	crude slang for penis	crude	dick / johnson	match crudeness to the speaker	ox, calf, bull
-牛至	oregano: deadpan stand-in for 牛子 (penis)	stand-in, deadpan, crude humour	his johnson / his little guy (any deadpan English euphemism)	ONLY when context is a body part, not cooking; the innocent word is the joke, so use an innocent-sounding English euphemism and keep it the same all book long	oregano
-牛牛	childish word for penis	stand-in, childish, comic	willy / wee-wee / little guy	ONLY when it is a body part; as a nickname or a cow keep it as such	bull, cow, ox, moo
-鸡鸡	childish word for penis	stand-in, childish, comic	willy / wee-wee	ONLY the body-part sense	chicken
-丁丁	childish word for penis (also a name)	stand-in, childish, comic	willy / little guy	ONLY the body-part sense; as a name keep the name	Dingding, Ding Ding
-蛋蛋	childish word for testicles (also a pet name)	stand-in, childish, comic	balls / family jewels	ONLY the body-part sense	eggs, egg
-小兄弟	"little brother": euphemism for penis	stand-in, comic	little guy / little friend	ONLY when it clearly means a body part; usually it is a real younger man	little brother
-那话儿	"that thing": old-fashioned euphemism for penis	stand-in, coy	his manhood / that thing of his	keep the coyness	
-大姨妈	"big auntie": euphemism for a period	stand-in, coy	my period / that time of the month / Aunt Flo	ONLY when about menstruation; also a real aunt	big aunt, aunt
-开车	"driving": telling dirty jokes, getting raunchy	stand-in, teasing	getting dirty / things are getting spicy	ONLY when it means raunchy talk; usually it is real driving	
-老司机	"old driver": someone experienced in dirty jokes or sex	stand-in, teasing	old pro / dirty-minded veteran	ONLY the slang sense; also a real experienced driver	old driver
-不可描述	"indescribable": something too raunchy to describe	coy	unspeakable / NSFW	keep the coy wink	
-和谐	harmony: ONLY in the slang sense of censored	wry	censored / scrubbed	ONLY when about censorship; usually it just means harmony	
-圣贤时间	"sage time": the calm, detached clarity right after sex or masturbation	crude humour	post-nut clarity / sage mode	keep it jokey; as crude as the narrator	sage time
-带把儿	"has a handle": is male (crude, casual)	stand-in, crude	a boy / has the equipment	keep it a euphemism, never anatomical	handle
-桀桀	villain's cackle (stock sound in xianxia/wuxia)	sinister, genre stock	Heh heh heh / Hehehe (or "he cackled")	a sound word; keep it sinister or mock-sinister	jie
+term	meaning	tone	default_en	strategy	avoid	default_ja	avoid_ja
+卧槽	exclamation of shock or amazement (vulgar)	crude, strong	Holy shit / What the hell / Damn	match strength to speaker; milder 'Whoa' for kids		うわっ / マジかよ / クソッ	
+我靠	exclamation of surprise or annoyance	crude, mild	Damn / Crap / What the—	match strength		くそっ / マジか / なんだよ	
+牛逼	awesome, impressive (vulgar)	crude, admiring	badass / insane / awesome	as praise; 'damn good' in narration	cow, ox, bull	すげえ / ヤバい / 半端ねえ	
+666	praise: well played, impressive	online, playful	Nice! / GG / insane	short reaction; never write the digits		うまい！ / ナイス！ / さすが	
+yyds	'eternal god': the absolute best	online, hype	the GOAT / undefeated	use 'the GOAT' for people, 'the best ever' for things		最強 / 神 / 永遠の推し	永遠の神
+绝绝子	amazing, the best (trendy, often ironic)	trendy, gushy	absolutely iconic / chef's kiss	can be ironic: check context		最高すぎ / 神 / 尊い	
+绝了	incredible (good or ridiculous)	casual	Unreal / Incredible	decide praise vs disbelief from context		ヤバい / すごすぎる / ありえない	
+破防	emotionally broken through: deeply moved or hurt	online	that broke me / I'm wrecked	keep it short and dramatic		心をえぐられた / 泣いた / 刺さった	防御を破
+内卷	rat race, involution: pointless overcompetition	social commentary	the rat race / cutthroat grind	keep the bitterness		不毛な競争 / 消耗戦	内巻
+躺平	'lying flat': opting out of the rat race	social, resigned	giving up the hustle / opting out	verb form: 'just lie flat' only if the image is used		頑張るのをやめる / 降りる	横たわ
+摆烂	deliberately stop trying, let it all fall apart	resigned, humorous	Screw it, I'm done trying	humorous defeat, not depression		もうどうでもいい / 投げやりになる	
+社死	'social death': public humiliation	online, humorous	mortified / I want to die of embarrassment	comic exaggeration		恥ずかしすぎて死ねる / 公開処刑	社会的死
+打工人	wage slave (self-mocking)	self-deprecating	us working stiffs / corporate drones	self-mocking, warm		社畜 / しがない勤め人	
+凡尔赛	humblebragging	mocking	humblebrag	verb: 'stop humblebragging'		自慢 / さりげない自慢 / マウント	ベルサイユ
+吃瓜	watching drama unfold as a bystander	gossipy, amused	grab the popcorn / just here for the drama	吃瓜群众 = the onlookers	melon	高みの見物 / 野次馬 / ポップコーン片手に見物	瓜を食
+吃瓜群众	bystanders enjoying the drama	gossipy	onlookers / the peanut gallery	plural crowd		野次馬 / 見物人	瓜を食
+柠檬精	someone jealous of others' success	teasing	jealous much? / green with envy	teasing tone	lemon	嫉妬の塊 / ひがみ屋 / 妬いてる	レモン
+真香	'smells great': instantly breaking one's own vow	comic	...okay, never mind, this is great	comic reversal; keep the punchline	smells good	……やっぱうまいわ / 前言撤回	いい匂い,いい香り
+杠精	someone who argues for the sake of arguing	annoyed	contrarian / troll	'Stop being a contrarian'		屁理屈屋 / 揚げ足取り	
+键盘侠	keyboard warrior	contemptuous	keyboard warrior	direct equivalent exists		ネット弁慶 / 口だけ番長	キーボード
+舔狗	simp: someone who fawns over a crush	mocking	simp	noun and verb	licking dog	貢ぎ君 / 都合のいい男 / 尽くし系	舐め犬
+白月光	the unattainable first love one idealises	romantic	the one that got away / first love	romance novels: often a key phrase; add to glossary		忘れられない初恋 / 高嶺の花	白い月光,月光
+朱砂痣	the beloved who left a lasting mark (paired with 白月光)	romantic	the one who left a scar on his heart	often paired with 白月光		心に残った人 / 消えない想い人	朱砂のほくろ,ほくろ
+绿茶	girl who acts innocent but manipulates (only in the slang sense, not the drink)	catty	manipulative 'innocent' girl / fake sweetheart	ONLY if it is about a person	green tea	ぶりっ子 / 清純ぶった計算高い女	緑茶
+白莲花	person who plays the pure victim	catty, sarcastic	the pure little innocent (sarcastic)	sarcasm in English	lotus	ぶりっ子 / 被害者ぶる女	白蓮,蓮の花
+恋爱脑	someone whose brain is all romance	mocking	lovesick fool / love-brained	casual		恋愛脳 / 恋に溺れたバカ	
+显眼包	attention seeker, the class clown	teasing, affectionate	show-off / class clown	affectionate teasing		目立ちたがり / お調子者	
+大冤种	sucker who always loses out	self-mocking	total sucker / the fall guy	comic		とんだお人好し / 貧乏くじ	
+普信男	mediocre but overconfident man	mocking	mediocre man with main-character confidence	keep the sting		勘違い男 / 根拠のない自信家	
+中二	chuunibyou: teenage delusions of grandeur	teasing	edgy / chuunibyou	'edgy teen phase' in narration		中二病	
+二次元	anime/manga/game culture	neutral	anime fandom / the 2D world	context: fandom vs 'not real'		二次元 / アニメ・漫画の世界	
+小鲜肉	young handsome male idol	playful	pretty boy / young heartthrob	light tone		イケメン若手 / 美少年アイドル	新鮮な肉,生肉
+高富帅	tall, rich and handsome guy	envious	tall, rich and handsome / Prince Charming	keep as the stock phrase		ハイスペ男子 / 三高男子	
+白富美	fair, rich and beautiful girl	envious	rich, beautiful girl / dream girl	stock phrase		お嬢様 / 美人で金持ちの子	
+土豪	nouveau riche, big spender	teasing	big spender / moneybags	teasing, sometimes admiring		成金 / 金持ち	
+装逼	show off, act cool (vulgar)	crude, mocking	show off / act all cool / flex	match vulgarity: 'flex' is milder		カッコつけ / イキる / ドヤる	
+老铁	bro, buddy	casual, northern	bro / buddy	friendly		兄弟 / 相棒 / ダチ	老鉄,鉄
+大佬	big shot, expert	admiring	big shot / boss / pro	gaming: 'pro'		大物 / ボス / ガチ勢	
+萌新	newbie	self-deprecating	newbie / noob	'noob' is harsher		初心者 / 新入り	
+菜鸡	noob, weakling (mocking)	mocking	scrub / noob	gaming insult		雑魚 / ヘタクソ	鶏
+开挂	using cheats; being unbelievably lucky or strong	envious	cheating / hacks / like he's got cheats on	'Is he hacking?'		チート / チート級	掛け
+金手指	the protagonist's special cheat ability	genre jargon	cheat / golden finger	in narration: 'his cheat'; add to glossary if central		チート能力	金の指
+主角光环	protagonist's halo: plot armour	meta, mocking	plot armor / protagonist's halo	'plot armor' reads naturally		主人公補正	後光
+扮猪吃虎	pretending to be weak to defeat others	genre jargon	playing the weakling / hiding his strength	describe the move, avoid the literal pig/tiger		弱いふりをして実力を隠す	豚のふり,虎を食
+打脸	humiliating someone by proving them wrong	genre jargon	face-slapping / put them in their place	literal 'slapping' only if a real slap happens	slap in the face	ざまぁ / 鼻を明かす	顔を叩,顔を打,ビンタ
+逆袭	underdog comeback	triumphant	comeback / turning the tables	noun or verb		逆転 / 下剋上	
+炮灰	cannon fodder, throwaway character	meta	cannon fodder	direct equivalent		捨て駒 / 噛ませ犬	砲灰
+单身狗	single person (self-mocking)	self-deprecating	forever alone / single loser	comic	single dog	独り身 / 非リア	独身犬,シングル犬
+狗粮	PDA forced on single people ('dog food')	teasing	stop flaunting it / third-wheeling	describe; no literal dog food	dog food	見せつけ / 独り身には毒	ドッグフード,犬の餌
+秀恩爱	showing off a relationship	teasing	flaunting their love / PDA	casual		イチャイチャを見せつける / のろけ	
+我太难了	life is so hard for me (comic)	self-pitying, humorous	I can't catch a break	comic whining		もう無理 / 勘弁してくれ	
+扎心了	that hurt (a remark that stings)	humorous	ouch / that stings	short reaction		グサッときた / 刺さる	
+emo	feeling down, moody	online	feeling emo / down in the dumps	keep 'emo' if casual young speaker		病む / へこむ / 落ち込む	
+栓Q	sarcastic 'thank you' (I'm speechless)	sarcastic	thanks, I hate it	sarcasm		ありがとうございます（棒読み）/ 言葉もない	
+芭比Q了	it's over, we're done for	humorous	we're toast / it's over	comic doom		終わった / オワタ	バーベキュー
+YYDS	'eternal god': the absolute best	online, hype	the GOAT	same as yyds		最強 / 神	永遠の神
+社恐	social anxiety (casual self-label)	casual	socially awkward / introvert	casual self-label, not clinical		人見知り / コミュ障	
+i人	introvert (from MBTI)	casual	introvert	casual		内向型	
+e人	extrovert (from MBTI)	casual	extrovert	casual		外向型	
+CPU	to manipulate someone emotionally (slang verb)	online	gaslight / mess with someone's head	only when used as a verb about people		手玉に取る / 心を操る	
+PUA	emotional manipulation in a relationship	online	manipulate / gaslight	verb or noun		モラハラ / 洗脳	
+下头	a turn-off, instantly disgusted	casual	such a turn-off / ick	'That's the ick'		冷める / 萎える / 蛙化	
+上头	hooked, obsessed (slang sense only)	casual	hooked / obsessed	ONLY slang sense; also means 'above' or 'the higher-ups'		ハマる / 沼る	
+瑞思拜	respect (from English)	playful	respect	just 'Respect.'		リスペクト	
+硬核	hardcore	admiring	hardcore	direct		ガチ / 本格的	
+佛系	laid-back, unbothered	casual	chill / zen about it	casual		悟り系 / ゆるい	仏系
+戏精	drama queen, overactor	mocking	drama queen	direct		大げさ / 劇団員	
+锦鲤	lucky charm person	playful	lucky charm	'You're my lucky charm'	koi	幸運の持ち主 / 福の神	錦鯉
+学霸	top student	admiring	straight-A student / brainiac	casual		優等生 / 秀才	
+学渣	bad student	self-deprecating	slacker / failing student	casual		劣等生 / 落ちこぼれ	
+宅男	homebody / otaku guy	teasing	shut-in / otaku	context		オタク / 引きこもり	
+格局	big-picture thinking, broad-mindedness (slang: 格局打开/格局小了)	playful, mock-wise	think bigger / small-minded	ONLY in the slang sense; also means "layout" (of a house, a situation)		器 / 視野（器が小さい / 視野を広げろ）	格局
+尼玛	stand-in for 你妈 (your mother), used as a curse	stand-in, crude	damn / motherf— / what the hell	curse word; never a name	Nima	くそっ / ちくしょう / なんだよ	ニーマ
+草泥马	grass-mud horse: stand-in for 操你妈 (fuck your mother)	stand-in, crude, jokey	motherfucker / screw this	curse; keep the strength	alpaca, grass mud horse, grass-mud horse	クソが / ふざけんな	アルパカ,草泥馬
+卧草	stand-in spelling of 卧槽	stand-in, crude	Holy shit / What the hell	same as 卧槽	lying grass, lie on grass	うわっ / マジかよ / クソッ	草に
+河蟹	river crab: stand-in for 和谐 (harmony = censorship)	stand-in, wry	censored / scrubbed	censorship joke; ONLY when about censorship	river crab, crab	検閲 / 規制	カニ,蟹
+被和谐	"harmonized" = censored, deleted	wry	got censored / got scrubbed	censorship joke	harmonized, harmonised	検閲された / 規制された	調和
+沙雕	sand sculpture: stand-in for 傻屌 (dumbass), playful	stand-in, playful	idiot / dumbass / goofball	affectionate insult or "silly"	sand sculpture	アホ / バカ / ネタキャラ	砂の彫刻,砂像
+牛子	crude slang for penis	crude	dick / johnson	match crudeness to the speaker	ox, calf, bull	ナニ / イチモツ	子牛,牛
+牛至	oregano: deadpan stand-in for 牛子 (penis)	stand-in, deadpan, crude humour	his johnson / his little guy (any deadpan English euphemism)	ONLY when context is a body part, not cooking; the innocent word is the joke, so use an innocent-sounding English euphemism and keep it the same all book long	oregano	ムスコ / アレ（とぼけた婉曲表現で統一）	オレガノ
+牛牛	childish word for penis	stand-in, childish, comic	willy / wee-wee / little guy	ONLY when it is a body part; as a nickname or a cow keep it as such	bull, cow, ox, moo	おちんちん / ムスコ	牛
+鸡鸡	childish word for penis	stand-in, childish, comic	willy / wee-wee	ONLY the body-part sense	chicken	おちんちん	鶏,ニワトリ
+丁丁	childish word for penis (also a name)	stand-in, childish, comic	willy / little guy	ONLY the body-part sense; as a name keep the name	Dingding, Ding Ding	おちんちん / ムスコ	ディンディン
+蛋蛋	childish word for testicles (also a pet name)	stand-in, childish, comic	balls / family jewels	ONLY the body-part sense	eggs, egg	タマ / キンタマ	卵
+小兄弟	"little brother": euphemism for penis	stand-in, comic	little guy / little friend	ONLY when it clearly means a body part; usually it is a real younger man	little brother	ムスコ / 息子	弟分
+那话儿	"that thing": old-fashioned euphemism for penis	stand-in, coy	his manhood / that thing of his	keep the coyness		アレ / 一物	
+大姨妈	"big auntie": euphemism for a period	stand-in, coy	my period / that time of the month / Aunt Flo	ONLY when about menstruation; also a real aunt	big aunt, aunt	生理 / アレの日	伯母,叔母,おばさん
+开车	"driving": telling dirty jokes, getting raunchy	stand-in, teasing	getting dirty / things are getting spicy	ONLY when it means raunchy talk; usually it is real driving		下ネタ / エロい話	運転
+老司机	"old driver": someone experienced in dirty jokes or sex	stand-in, teasing	old pro / dirty-minded veteran	ONLY the slang sense; also a real experienced driver	old driver	下ネタの達人 / 経験豊富なやつ	運転手,ドライバー
+不可描述	"indescribable": something too raunchy to describe	coy	unspeakable / NSFW	keep the coy wink		ここでは書けない / 自主規制	
+和谐	harmony: ONLY in the slang sense of censored	wry	censored / scrubbed	ONLY when about censorship; usually it just means harmony		検閲 / 規制	調和
+圣贤时间	"sage time": the calm, detached clarity right after sex or masturbation	crude humour	post-nut clarity / sage mode	keep it jokey; as crude as the narrator	sage time	賢者タイム	聖人
+带把儿	"has a handle": is male (crude, casual)	stand-in, crude	a boy / has the equipment	keep it a euphemism, never anatomical	handle	男の子 / ついてる	取っ手
+桀桀	villain's cackle (stock sound in xianxia/wuxia)	sinister, genre stock	Heh heh heh / Hehehe (or "he cackled")	a sound word; keep it sinister or mock-sinister	jie	ククク / クハハ	ジエ
