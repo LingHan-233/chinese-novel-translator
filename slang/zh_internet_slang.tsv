@@ -1,76 +1,97 @@
 # Chinese internet slang and web-novel jargon. TAB-separated. Contributions welcome.
 # Avoid single characters and words whose normal meaning is common (they cause false matches).
 # strategy = how to handle it; 'ONLY' marks words that also have an ordinary meaning.
-term	meaning	tone	default_en	strategy
-卧槽	exclamation of shock or amazement (vulgar)	crude, strong	Holy shit / What the hell / Damn	match strength to speaker; milder 'Whoa' for kids
-我靠	exclamation of surprise or annoyance	crude, mild	Damn / Crap / What the—	match strength
-牛逼	awesome, impressive (vulgar)	crude, admiring	badass / insane / awesome	as praise; 'damn good' in narration
-666	praise: well played, impressive	online, playful	Nice! / GG / insane	short reaction; never write the digits
-yyds	'eternal god': the absolute best	online, hype	the GOAT / undefeated	use 'the GOAT' for people, 'the best ever' for things
-绝绝子	amazing, the best (trendy, often ironic)	trendy, gushy	absolutely iconic / chef's kiss	can be ironic: check context
-绝了	incredible (good or ridiculous)	casual	Unreal / Incredible	decide praise vs disbelief from context
-破防	emotionally broken through: deeply moved or hurt	online	that broke me / I'm wrecked	keep it short and dramatic
-内卷	rat race, involution: pointless overcompetition	social commentary	the rat race / cutthroat grind	keep the bitterness
-躺平	'lying flat': opting out of the rat race	social, resigned	giving up the hustle / opting out	verb form: 'just lie flat' only if the image is used
-摆烂	deliberately stop trying, let it all fall apart	resigned, humorous	Screw it, I'm done trying	humorous defeat, not depression
-社死	'social death': public humiliation	online, humorous	mortified / I want to die of embarrassment	comic exaggeration
-打工人	wage slave (self-mocking)	self-deprecating	us working stiffs / corporate drones	self-mocking, warm
-凡尔赛	humblebragging	mocking	humblebrag	verb: 'stop humblebragging'
-吃瓜	watching drama unfold as a bystander	gossipy, amused	grab the popcorn / just here for the drama	吃瓜群众 = the onlookers
-吃瓜群众	bystanders enjoying the drama	gossipy	onlookers / the peanut gallery	plural crowd
-柠檬精	someone jealous of others' success	teasing	jealous much? / green with envy	teasing tone
-真香	'smells great': instantly breaking one's own vow	comic	...okay, never mind, this is great	comic reversal; keep the punchline
-杠精	someone who argues for the sake of arguing	annoyed	contrarian / troll	'Stop being a contrarian'
-键盘侠	keyboard warrior	contemptuous	keyboard warrior	direct equivalent exists
-舔狗	simp: someone who fawns over a crush	mocking	simp	noun and verb
-白月光	the unattainable first love one idealises	romantic	the one that got away / first love	romance novels: often a key phrase; add to glossary
-朱砂痣	the beloved who left a lasting mark (paired with 白月光)	romantic	the one who left a scar on his heart	often paired with 白月光
-绿茶	girl who acts innocent but manipulates (only in the slang sense, not the drink)	catty	manipulative 'innocent' girl / fake sweetheart	ONLY if it is about a person
-白莲花	person who plays the pure victim	catty, sarcastic	the pure little innocent (sarcastic)	sarcasm in English
-恋爱脑	someone whose brain is all romance	mocking	lovesick fool / love-brained	casual
-显眼包	attention seeker, the class clown	teasing, affectionate	show-off / class clown	affectionate teasing
-大冤种	sucker who always loses out	self-mocking	total sucker / the fall guy	comic
-普信男	mediocre but overconfident man	mocking	mediocre man with main-character confidence	keep the sting
-中二	chuunibyou: teenage delusions of grandeur	teasing	edgy / chuunibyou	'edgy teen phase' in narration
-二次元	anime/manga/game culture	neutral	anime fandom / the 2D world	context: fandom vs 'not real'
-小鲜肉	young handsome male idol	playful	pretty boy / young heartthrob	light tone
-高富帅	tall, rich and handsome guy	envious	tall, rich and handsome / Prince Charming	keep as the stock phrase
-白富美	fair, rich and beautiful girl	envious	rich, beautiful girl / dream girl	stock phrase
-土豪	nouveau riche, big spender	teasing	big spender / moneybags	teasing, sometimes admiring
-装逼	show off, act cool (vulgar)	crude, mocking	show off / act all cool / flex	match vulgarity: 'flex' is milder
-老铁	bro, buddy	casual, northern	bro / buddy	friendly
-大佬	big shot, expert	admiring	big shot / boss / pro	gaming: 'pro'
-萌新	newbie	self-deprecating	newbie / noob	'noob' is harsher
-菜鸡	noob, weakling (mocking)	mocking	scrub / noob	gaming insult
-开挂	using cheats; being unbelievably lucky or strong	envious	cheating / hacks / like he's got cheats on	'Is he hacking?'
-金手指	the protagonist's special cheat ability	genre jargon	cheat / golden finger	in narration: 'his cheat'; add to glossary if central
-主角光环	protagonist's halo: plot armour	meta, mocking	plot armor / protagonist's halo	'plot armor' reads naturally
-扮猪吃虎	pretending to be weak to defeat others	genre jargon	playing the weakling / hiding his strength	describe the move, avoid the literal pig/tiger
-打脸	humiliating someone by proving them wrong	genre jargon	face-slapping / put them in their place	literal 'slapping' only if a real slap happens
-逆袭	underdog comeback	triumphant	comeback / turning the tables	noun or verb
-炮灰	cannon fodder, throwaway character	meta	cannon fodder	direct equivalent
-单身狗	single person (self-mocking)	self-deprecating	forever alone / single loser	comic
-狗粮	PDA forced on single people ('dog food')	teasing	stop flaunting it / third-wheeling	describe; no literal dog food
-秀恩爱	showing off a relationship	teasing	flaunting their love / PDA	casual
-我太难了	life is so hard for me (comic)	self-pitying, humorous	I can't catch a break	comic whining
-扎心了	that hurt (a remark that stings)	humorous	ouch / that stings	short reaction
-emo	feeling down, moody	online	feeling emo / down in the dumps	keep 'emo' if casual young speaker
-栓Q	sarcastic 'thank you' (I'm speechless)	sarcastic	thanks, I hate it	sarcasm
-芭比Q了	it's over, we're done for	humorous	we're toast / it's over	comic doom
-YYDS	'eternal god': the absolute best	online, hype	the GOAT	same as yyds
-社恐	social anxiety (casual self-label)	casual	socially awkward / introvert	casual self-label, not clinical
-i人	introvert (from MBTI)	casual	introvert	casual
-e人	extrovert (from MBTI)	casual	extrovert	casual
-CPU	to manipulate someone emotionally (slang verb)	online	gaslight / mess with someone's head	only when used as a verb about people
-PUA	emotional manipulation in a relationship	online	manipulate / gaslight	verb or noun
-下头	a turn-off, instantly disgusted	casual	such a turn-off / ick	'That's the ick'
-上头	hooked, obsessed (slang sense only)	casual	hooked / obsessed	ONLY slang sense; also means 'above' or 'the higher-ups'
-瑞思拜	respect (from English)	playful	respect	just 'Respect.'
-硬核	hardcore	admiring	hardcore	direct
-佛系	laid-back, unbothered	casual	chill / zen about it	casual
-戏精	drama queen, overactor	mocking	drama queen	direct
-锦鲤	lucky charm person	playful	lucky charm	'You're my lucky charm'
-学霸	top student	admiring	straight-A student / brainiac	casual
-学渣	bad student	self-deprecating	slacker / failing student	casual
-宅男	homebody / otaku guy	teasing	shut-in / otaku	context
-格局	big-picture thinking, broad-mindedness (slang: 格局打开/格局小了)	playful, mock-wise	think bigger / small-minded	ONLY in the slang sense; also means "layout" (of a house, a situation)
+# avoid = literal English words that would mean a word-for-word translation (comma-separated); check warns if they appear.
+# Stand-in words (谐音/委婉替代): an innocent word used for a rude or taboo one. Mark them "stand-in" in tone.
+term	meaning	tone	default_en	strategy	avoid
+卧槽	exclamation of shock or amazement (vulgar)	crude, strong	Holy shit / What the hell / Damn	match strength to speaker; milder 'Whoa' for kids	
+我靠	exclamation of surprise or annoyance	crude, mild	Damn / Crap / What the—	match strength	
+牛逼	awesome, impressive (vulgar)	crude, admiring	badass / insane / awesome	as praise; 'damn good' in narration	cow, ox, bull
+666	praise: well played, impressive	online, playful	Nice! / GG / insane	short reaction; never write the digits	
+yyds	'eternal god': the absolute best	online, hype	the GOAT / undefeated	use 'the GOAT' for people, 'the best ever' for things	
+绝绝子	amazing, the best (trendy, often ironic)	trendy, gushy	absolutely iconic / chef's kiss	can be ironic: check context	
+绝了	incredible (good or ridiculous)	casual	Unreal / Incredible	decide praise vs disbelief from context	
+破防	emotionally broken through: deeply moved or hurt	online	that broke me / I'm wrecked	keep it short and dramatic	
+内卷	rat race, involution: pointless overcompetition	social commentary	the rat race / cutthroat grind	keep the bitterness	
+躺平	'lying flat': opting out of the rat race	social, resigned	giving up the hustle / opting out	verb form: 'just lie flat' only if the image is used	
+摆烂	deliberately stop trying, let it all fall apart	resigned, humorous	Screw it, I'm done trying	humorous defeat, not depression	
+社死	'social death': public humiliation	online, humorous	mortified / I want to die of embarrassment	comic exaggeration	
+打工人	wage slave (self-mocking)	self-deprecating	us working stiffs / corporate drones	self-mocking, warm	
+凡尔赛	humblebragging	mocking	humblebrag	verb: 'stop humblebragging'	
+吃瓜	watching drama unfold as a bystander	gossipy, amused	grab the popcorn / just here for the drama	吃瓜群众 = the onlookers	melon
+吃瓜群众	bystanders enjoying the drama	gossipy	onlookers / the peanut gallery	plural crowd	
+柠檬精	someone jealous of others' success	teasing	jealous much? / green with envy	teasing tone	lemon
+真香	'smells great': instantly breaking one's own vow	comic	...okay, never mind, this is great	comic reversal; keep the punchline	smells good
+杠精	someone who argues for the sake of arguing	annoyed	contrarian / troll	'Stop being a contrarian'	
+键盘侠	keyboard warrior	contemptuous	keyboard warrior	direct equivalent exists	
+舔狗	simp: someone who fawns over a crush	mocking	simp	noun and verb	licking dog
+白月光	the unattainable first love one idealises	romantic	the one that got away / first love	romance novels: often a key phrase; add to glossary	
+朱砂痣	the beloved who left a lasting mark (paired with 白月光)	romantic	the one who left a scar on his heart	often paired with 白月光	
+绿茶	girl who acts innocent but manipulates (only in the slang sense, not the drink)	catty	manipulative 'innocent' girl / fake sweetheart	ONLY if it is about a person	green tea
+白莲花	person who plays the pure victim	catty, sarcastic	the pure little innocent (sarcastic)	sarcasm in English	lotus
+恋爱脑	someone whose brain is all romance	mocking	lovesick fool / love-brained	casual	
+显眼包	attention seeker, the class clown	teasing, affectionate	show-off / class clown	affectionate teasing	
+大冤种	sucker who always loses out	self-mocking	total sucker / the fall guy	comic	
+普信男	mediocre but overconfident man	mocking	mediocre man with main-character confidence	keep the sting	
+中二	chuunibyou: teenage delusions of grandeur	teasing	edgy / chuunibyou	'edgy teen phase' in narration	
+二次元	anime/manga/game culture	neutral	anime fandom / the 2D world	context: fandom vs 'not real'	
+小鲜肉	young handsome male idol	playful	pretty boy / young heartthrob	light tone	
+高富帅	tall, rich and handsome guy	envious	tall, rich and handsome / Prince Charming	keep as the stock phrase	
+白富美	fair, rich and beautiful girl	envious	rich, beautiful girl / dream girl	stock phrase	
+土豪	nouveau riche, big spender	teasing	big spender / moneybags	teasing, sometimes admiring	
+装逼	show off, act cool (vulgar)	crude, mocking	show off / act all cool / flex	match vulgarity: 'flex' is milder	
+老铁	bro, buddy	casual, northern	bro / buddy	friendly	
+大佬	big shot, expert	admiring	big shot / boss / pro	gaming: 'pro'	
+萌新	newbie	self-deprecating	newbie / noob	'noob' is harsher	
+菜鸡	noob, weakling (mocking)	mocking	scrub / noob	gaming insult	
+开挂	using cheats; being unbelievably lucky or strong	envious	cheating / hacks / like he's got cheats on	'Is he hacking?'	
+金手指	the protagonist's special cheat ability	genre jargon	cheat / golden finger	in narration: 'his cheat'; add to glossary if central	
+主角光环	protagonist's halo: plot armour	meta, mocking	plot armor / protagonist's halo	'plot armor' reads naturally	
+扮猪吃虎	pretending to be weak to defeat others	genre jargon	playing the weakling / hiding his strength	describe the move, avoid the literal pig/tiger	
+打脸	humiliating someone by proving them wrong	genre jargon	face-slapping / put them in their place	literal 'slapping' only if a real slap happens	slap in the face
+逆袭	underdog comeback	triumphant	comeback / turning the tables	noun or verb	
+炮灰	cannon fodder, throwaway character	meta	cannon fodder	direct equivalent	
+单身狗	single person (self-mocking)	self-deprecating	forever alone / single loser	comic	single dog
+狗粮	PDA forced on single people ('dog food')	teasing	stop flaunting it / third-wheeling	describe; no literal dog food	dog food
+秀恩爱	showing off a relationship	teasing	flaunting their love / PDA	casual	
+我太难了	life is so hard for me (comic)	self-pitying, humorous	I can't catch a break	comic whining	
+扎心了	that hurt (a remark that stings)	humorous	ouch / that stings	short reaction	
+emo	feeling down, moody	online	feeling emo / down in the dumps	keep 'emo' if casual young speaker	
+栓Q	sarcastic 'thank you' (I'm speechless)	sarcastic	thanks, I hate it	sarcasm	
+芭比Q了	it's over, we're done for	humorous	we're toast / it's over	comic doom	
+YYDS	'eternal god': the absolute best	online, hype	the GOAT	same as yyds	
+社恐	social anxiety (casual self-label)	casual	socially awkward / introvert	casual self-label, not clinical	
+i人	introvert (from MBTI)	casual	introvert	casual	
+e人	extrovert (from MBTI)	casual	extrovert	casual	
+CPU	to manipulate someone emotionally (slang verb)	online	gaslight / mess with someone's head	only when used as a verb about people	
+PUA	emotional manipulation in a relationship	online	manipulate / gaslight	verb or noun	
+下头	a turn-off, instantly disgusted	casual	such a turn-off / ick	'That's the ick'	
+上头	hooked, obsessed (slang sense only)	casual	hooked / obsessed	ONLY slang sense; also means 'above' or 'the higher-ups'	
+瑞思拜	respect (from English)	playful	respect	just 'Respect.'	
+硬核	hardcore	admiring	hardcore	direct	
+佛系	laid-back, unbothered	casual	chill / zen about it	casual	
+戏精	drama queen, overactor	mocking	drama queen	direct	
+锦鲤	lucky charm person	playful	lucky charm	'You're my lucky charm'	koi
+学霸	top student	admiring	straight-A student / brainiac	casual	
+学渣	bad student	self-deprecating	slacker / failing student	casual	
+宅男	homebody / otaku guy	teasing	shut-in / otaku	context	
+格局	big-picture thinking, broad-mindedness (slang: 格局打开/格局小了)	playful, mock-wise	think bigger / small-minded	ONLY in the slang sense; also means "layout" (of a house, a situation)	
+尼玛	stand-in for 你妈 (your mother), used as a curse	stand-in, crude	damn / motherf— / what the hell	curse word; never a name	Nima
+草泥马	grass-mud horse: stand-in for 操你妈 (fuck your mother)	stand-in, crude, jokey	motherfucker / screw this	curse; keep the strength	alpaca, grass mud horse, grass-mud horse
+卧草	stand-in spelling of 卧槽	stand-in, crude	Holy shit / What the hell	same as 卧槽	lying grass, lie on grass
+河蟹	river crab: stand-in for 和谐 (harmony = censorship)	stand-in, wry	censored / scrubbed	censorship joke; ONLY when about censorship	river crab, crab
+被和谐	"harmonized" = censored, deleted	wry	got censored / got scrubbed	censorship joke	harmonized, harmonised
+沙雕	sand sculpture: stand-in for 傻屌 (dumbass), playful	stand-in, playful	idiot / dumbass / goofball	affectionate insult or "silly"	sand sculpture
+牛子	crude slang for penis	crude	dick / johnson	match crudeness to the speaker	ox, calf, bull
+牛至	oregano: deadpan stand-in for 牛子 (penis)	stand-in, deadpan, crude humour	his johnson / his little guy (any deadpan English euphemism)	ONLY when context is a body part, not cooking; the innocent word is the joke, so use an innocent-sounding English euphemism and keep it the same all book long	oregano
+牛牛	childish word for penis	stand-in, childish, comic	willy / wee-wee / little guy	ONLY when it is a body part; as a nickname or a cow keep it as such	bull, cow, ox, moo
+鸡鸡	childish word for penis	stand-in, childish, comic	willy / wee-wee	ONLY the body-part sense	chicken
+丁丁	childish word for penis (also a name)	stand-in, childish, comic	willy / little guy	ONLY the body-part sense; as a name keep the name	Dingding, Ding Ding
+蛋蛋	childish word for testicles (also a pet name)	stand-in, childish, comic	balls / family jewels	ONLY the body-part sense	eggs, egg
+小兄弟	"little brother": euphemism for penis	stand-in, comic	little guy / little friend	ONLY when it clearly means a body part; usually it is a real younger man	little brother
+那话儿	"that thing": old-fashioned euphemism for penis	stand-in, coy	his manhood / that thing of his	keep the coyness	
+大姨妈	"big auntie": euphemism for a period	stand-in, coy	my period / that time of the month / Aunt Flo	ONLY when about menstruation; also a real aunt	big aunt, aunt
+开车	"driving": telling dirty jokes, getting raunchy	stand-in, teasing	getting dirty / things are getting spicy	ONLY when it means raunchy talk; usually it is real driving	
+老司机	"old driver": someone experienced in dirty jokes or sex	stand-in, teasing	old pro / dirty-minded veteran	ONLY the slang sense; also a real experienced driver	old driver
+不可描述	"indescribable": something too raunchy to describe	coy	unspeakable / NSFW	keep the coy wink	
+和谐	harmony: ONLY in the slang sense of censored	wry	censored / scrubbed	ONLY when about censorship; usually it just means harmony	

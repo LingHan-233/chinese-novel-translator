@@ -1,4 +1,4 @@
-# Chinese Novel Translator (v0.6.1)
+# Chinese Novel Translator (v0.7.0)
 
 Read Chinese web novels in English with your own AI agent.
 
@@ -74,7 +74,7 @@ This tool is for translating books **for your own private reading**. Do not post
 | `core/` | Translation rules and how names are handled |
 | `genres/` | Notes for xianxia/wuxia, urban/system, historical/court, and everything else |
 | `lang/en/` | English style guide and example translations |
-| `slang/zh_internet_slang.tsv` | Internet slang and web-novel jargon with suggested English |
+| `slang/zh_internet_slang.tsv` | Internet slang, web-novel jargon and stand-in words (谐音/委婉替代) with suggested English and literal translations to avoid |
 | `templates/` | Empty glossary, character list and synopsis |
 | `tests/sample_book.txt` | A short original sample novel to try the workflow |
 
@@ -90,6 +90,6 @@ MIT, see [LICENSE](LICENSE). The license covers this tool, not the novels you tr
 
 The easiest and most useful contributions:
 
-- **Slang**: add rows to `slang/zh_internet_slang.tsv` (term, meaning, tone, suggested English, how to handle).
+- **Slang**: add rows to `slang/zh_internet_slang.tsv` (term, meaning, tone, suggested English, how to handle, literal English to avoid). Stand-in words (an innocent word used for a rude one, like 牛至 for 牛子) are especially useful: a literal translation of them reads fine and slips past every other check.
 - **Examples**: add short, original Chinese/English pairs to `lang/en/examples.md`. No text from published novels.
 - **Genre notes**: improve `genres/*.md` or add a new genre (romance, historical, horror...).

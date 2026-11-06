@@ -68,6 +68,16 @@ long book), tell the user; the translation still works, only titles will be miss
    single characters (道 would match 一道菜) and everyday concepts (御剑, 大殿), or list the
    acceptable forms with `/` (`flying sword/sword flight`).
    and `TERM: 中文 | English | type | note`. How to choose English names: see `core/names.md`.
+   Also add a `SLANG:` line for every in-joke, nickname-for-a-thing or **stand-in word** the book
+   keeps using (an innocent word standing for a rude one, like 牛至 for 牛子, or a cute doubled
+   word like 牛牛). Words like these read fine when translated literally, so no check can catch a
+   wrong literal translation unless they are listed:
+   ```
+   SLANG: 牛至 | stand-in for 牛子 (penis); deadpan joke | deadpan, crude | his johnson | keep the same English every time | oregano
+   ```
+   Format: `SLANG: 中文 | meaning | tone | suggested English | how to handle | literal English to
+   avoid (comma-separated)`. The last field lets `check` warn when the literal word shows up.
+   The shared table `slang/zh_internet_slang.tsv` already has common ones; book lines override it.
 4. Run `novel.py add work/bible_notes.md`.
 5. If the user knows the book, ask them to check the genders and, if they like, fill in
    `novel-translations/<book>/bible/synopsis.md`. This is optional.
@@ -100,11 +110,14 @@ Repeat until the script says the trial or the book is finished:
    SUMMARY: One or two English sentences on what happened in this passage.
    TERM: 中文 | English | type | note
    CHAR: 中文 | English | gender | note
+   SLANG: 中文 | meaning | tone | English | how to handle | literal words to avoid
    FLAG: P10 | a pun I could not keep / a line I am unsure about
    ```
    Add TERM/CHAR lines only for names or special terms that were **not** in the task's tables
    and that you had to choose an English form for. Add a FLAG line for anything a human should
-   look at. A passage with nothing new needs only SUMMARY.
+   look at. Add a SLANG line when you notice a joke word, stand-in word or in-joke that the book
+   uses again and again: from the next passage on, every task that contains it will explain it.
+   A passage with nothing new needs only SUMMARY.
 6. `novel.py accept`. Then go back to 1.
 
 If the script reports a CONFLICT, it kept the old name. Use the old one from then on, even if a
@@ -169,5 +182,10 @@ Give the user the files. You can build at any time to show progress.
 | `novel.py init ... --chunk-chars 800 --force` | start over with smaller passages (deletes progress) — use if the model keeps skipping sentences |
 
 The bible lives in `novel-translations/<book>/bible/`: `glossary.tsv`, `characters.tsv`
-(tab-separated, editable by hand), `synopsis.md`, `examples.md` (book examples),
-`flags.tsv`, and `conflicts.tsv` if names clashed.
+(tab-separated, editable by hand), `slang_extra.tsv` (this book's slang and stand-in words),
+`synopsis.md`, `examples.md` (book examples), `flags.tsv`, and `conflicts.tsv` if names clashed.
+
+Which list a word goes in: **names** of people, places, sects, techniques → glossary/characters
+(the English must appear). **Slang, jokes and stand-in words** → `SLANG:` lines /
+`slang_extra.tsv` (explained to the translator, literal translation flagged). A word may be in
+both; it then shows in both tables.

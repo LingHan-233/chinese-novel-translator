@@ -27,7 +27,7 @@ from html.parser import HTMLParser
 from pathlib import Path
 import xml.etree.ElementTree as ET
 
-VERSION = "0.6.1"
+VERSION = "0.7.0"
 SKILL_DIR = Path(__file__).resolve().parent.parent
 HOME_NAME = "novel-translations"
 
@@ -562,9 +562,13 @@ class Book:
         return read_tsv(self.bible / "characters.tsv")
 
     def slang(self):
-        rows = read_tsv(SKILL_DIR / "slang" / "zh_internet_slang.tsv")
-        rows += read_tsv(self.bible / "slang_extra.tsv")
-        return rows
+        """Shared slang table plus this book's own (bible/slang_extra.tsv). The book wins."""
+        merged = {}
+        for r in read_tsv(SKILL_DIR / "slang" / "zh_internet_slang.tsv"):
+            merged[r.get("term", "")] = r
+        for r in read_tsv(self.bible / "slang_extra.tsv"):
+            merged[r.get("term", "")] = dict(r, book="yes")
+        return [r for t, r in merged.items() if t]
 
     def summaries(self):
         return read_tsv(self.ws / "summaries.tsv")
@@ -741,6 +745,7 @@ def cmd_candidates(args):
     nxt("Write the real names and terms into a file such as work/bible_notes.md using lines like\n"
         "  CHAR: 林凡 | Lin Fan | male | protagonist, calls himself 老子 when angry | 小凡/林哥\n"
         "  TERM: 青云宗 | Azure Cloud Sect | sect | \n"
+        "  SLANG: 牛至 | stand-in for 牛子 (penis) | deadpan | his johnson | never literal | oregano\n"
         "then run `" + py_cmd() + " add work/bible_notes.md`. Gender: write it only when the text "
         "makes it clear (他/她, 师兄/师姐, 公子/姑娘); otherwise write unknown - never guess from "
         "the name. Ask the user to check genders and fill bible/synopsis.md if they know the "
@@ -781,6 +786,57 @@ def parse_notes(text):
         if has_cjk(row["en"]):
             problems.append("The English field still contains Chinese: " + row["en"])
     return " ".join(summary).strip(), terms, chars, problems
+
+
+SLANG_HEADER = ["term", "meaning", "tone", "default_en", "strategy", "avoid"]
+
+
+def parse_slang(text):
+    """SLANG: 中文 | meaning | tone | suggested English | how to handle | literal English to avoid"""
+    rows, problems = [], []
+    for raw in text.splitlines():
+        line = raw.strip().lstrip("-*").strip()
+        if not line.upper().startswith("SLANG:"):
+            continue
+        f = [x.strip() for x in line.split(":", 1)[1].split("|")]
+        if len(f) < 4 or not f[0] or not f[1] or not f[3]:
+            problems.append("Bad SLANG line (need 中文 | meaning | tone | suggested English | "
+                            "how to handle | literal words to avoid): " + line)
+            continue
+        f += [""] * (6 - len(f))
+        if not has_cjk(f[0]) or len(f[0]) < 2:
+            problems.append("SLANG term must be Chinese, at least 2 characters: " + f[0])
+            continue
+        rows.append({"term": f[0], "meaning": f[1], "tone": f[2], "default_en": f[3],
+                     "strategy": f[4], "avoid": f[5]})
+    return rows, problems
+
+
+def merge_slang(book, rows):
+    """Add book-specific slang to bible/slang_extra.tsv. Existing entries are kept."""
+    if not rows:
+        return []
+    path = book.bible / "slang_extra.tsv"
+    have = read_tsv(path)
+    terms = {r.get("term") for r in have}
+    report = []
+    added = 0
+    for r in rows:
+        if r["term"] in terms:
+            report.append("Slang " + r["term"] + " is already in bible/slang_extra.tsv; kept the "
+                          "existing line (edit the file to change it).")
+            continue
+        have.append(r)
+        terms.add(r["term"])
+        added += 1
+    write_tsv(path, SLANG_HEADER, have,
+              ["This book's own slang, in-jokes and stand-in words. Shown in every task where the "
+               "term appears; overrides the shared table. avoid = literal English words "
+               "(comma-separated) that would mean a word-for-word translation. TAB-separated."])
+    if added:
+        report.insert(0, "Added " + str(added) + " slang entr" + ("y" if added == 1 else "ies")
+                      + " to bible/slang_extra.tsv.")
+    return report
 
 
 def parse_flags(text):
@@ -875,12 +931,15 @@ def cmd_add(args):
         path = book.ws / args.file
     if not path.exists():
         fail("Notes file not found: " + args.file)
-    _, terms, chars, problems = parse_notes(path.read_text(encoding="utf-8"))
-    for p in problems:
+    text = path.read_text(encoding="utf-8")
+    _, terms, chars, problems = parse_notes(text)
+    slang_rows, slang_problems = parse_slang(text)
+    for p in problems + slang_problems:
         out("SKIPPED: " + p)
-    for line in merge_bible(book, terms, chars):
+    for line in merge_bible(book, terms, chars) + merge_slang(book, slang_rows):
         out(line)
-    nxt("Run `" + py_cmd() + " next` to start translating (or add more names first).")
+    nxt("Run `" + py_cmd() + " next` to start translating (or add more names first). If a task "
+        "file is already open, `" + py_cmd() + " next --force` refreshes it.")
 
 
 # ------------------------------------------------------------ task files
@@ -1021,21 +1080,46 @@ def context_block(book, cid):
     return "\n\n".join(parts) if parts else "(This is the start of the book.)"
 
 
+def slang_hits(book, text, name_hits=None):
+    """Slang terms in the text. A slang word that only appears inside a longer glossary name
+    (逆袭 in 逆袭系统) does not count; a term that is itself a name still does."""
+    slang = book.slang()
+    terms = {r.get("term") for r in slang}
+    if name_hits is None:
+        name_hits = entries_in(text, book.glossary()) + \
+            entries_in(text, book.characters(), "aliases")
+    plain = text
+    for name in sorted({v for _, f in name_hits for v in f}, key=len, reverse=True):
+        if name not in terms:
+            plain = plain.replace(name, " ")
+    return entries_in(plain, [dict(r, zh=r.get("term", "")) for r in slang])
+
+
+def literal_slang(book, zh, en):
+    """(term, word) pairs where a stand-in term's literal English shows up in the translation."""
+    found = []
+    for r, _ in slang_hits(book, zh):
+        for w in (r.get("avoid") or "").split(","):
+            w = w.strip()
+            if w and re.search(r"(?<![A-Za-z])" + re.escape(w) + r"(?![A-Za-z])", en or "", re.I):
+                found.append((r.get("term"), w))
+    return found
+
+
 def reference_tables(book, text):
     g_hits = entries_in(text, book.glossary())
     c_hits = entries_in(text, book.characters(), "aliases")
     # a slang word that only appears inside a glossary name (逆袭 in 逆袭系统) is not slang here
-    plain = text
-    for name in sorted({v for _, f in g_hits + c_hits for v in f}, key=len, reverse=True):
-        plain = plain.replace(name, " ")
-    s_hits = entries_in(plain, [dict(r, zh=r.get("term", "")) for r in book.slang()])
+    s_hits = slang_hits(book, text, g_hits + c_hits)
     gl = md_table(["中文 (found)", "English - use exactly", "type", "note"],
                   [["/".join(f), r.get("en"), r.get("type"), r.get("note")] for r, f in g_hits])
     ch = md_table(["中文 (found)", "English", "gender", "note"],
                   [["/".join(f), r.get("en"), r.get("gender"), r.get("note")] for r, f in c_hits])
-    sl = md_table(["term", "meaning", "tone", "suggested English", "how to handle"],
-                  [[r.get("term"), r.get("meaning"), r.get("tone"), r.get("default_en"),
-                    r.get("strategy")] for r, _ in s_hits])
+    sl = md_table(["term", "meaning", "tone", "suggested English", "how to handle",
+                   "never write (literal)"],
+                  [[r.get("term") + (" (this book)" if r.get("book") else ""), r.get("meaning"),
+                    r.get("tone"), r.get("default_en"), r.get("strategy"), r.get("avoid", "")]
+                   for r, _ in s_hits])
     return gl, ch, sl, len(s_hits)
 
 
@@ -1111,8 +1195,8 @@ def write_task(book, cid):
 SPOT_REVIEW = """# SPOT REVIEW - passage {cid}
 
 The script picked the paragraphs where meaning errors are most likely ({picked}): numbers or
-negation that differ between ZH and DRAFT, plus paragraphs with yes/no choices, titles, or
-who-does-what-to-whom structures.
+negation that differ between ZH and DRAFT, slang translated word for word, plus paragraphs with
+yes/no choices, titles, or who-does-what-to-whom structures.
 For each one below, compare DRAFT with ZH as if someone else had written the draft.
 
 Check:
@@ -1122,6 +1206,7 @@ Check:
 - **Title prefixes.** 代 = acting, 副 = deputy/vice, 前 = former (秦代掌门 = Acting Sect Leader Qin).
 - **Tone.** Insult stays insult, sarcasm stays sarcastic, humble stays humble.
 - **Every clause there, nothing added.**
+- **Slang and stand-in words** translated by their real meaning, not word for word.
 
 If a paragraph is wrong, fix **only that paragraph** in `work/current_output.md` (keep its marker).
 Do not touch the other paragraphs. If everything is right, change nothing.
@@ -1183,6 +1268,8 @@ def write_polish_task(book, cid):
                 if number_mismatch(p, draft.get("P%d" % i, ""))]
         neg = [i for i, p in enumerate(src["paras"], 1)
                if negation_mismatch(p, draft.get("P%d" % i, ""))]
+        must += [i for i, p in enumerate(src["paras"], 1)
+                 if literal_slang(book, p, draft.get("P%d" % i, ""))]
         picked = sorted(set(must) | set(neg[:6]) |
                         set(risky_paragraphs(src["paras"], min(6, max(2, n_paras // 4)))))
         for i in picked:
@@ -1210,6 +1297,8 @@ For every paragraph, compare DRAFT with ZH and fix any of these:
   "Acting Sect Leader Qin", not a person called "Qin Dai".
 - **Tone.** An insult stays an insult, sarcasm stays sarcastic, a humble line stays humble.
 - **Left out or added.** Every clause of ZH is there, nothing extra (no added greetings or explanations).
+- **Slang and stand-in words.** An innocent word used in place of a rude one (牛至 for 牛子,
+  河蟹 for 和谐) must not be translated literally: check the slang table.
 - **Jokes and wordplay.** Is the joke still funny in English? If a pun was lost, try to rebuild it
   with an English word that has the same double meaning. If you can't, keep the meaning.
 
@@ -1349,6 +1438,11 @@ def run_checks(book, cid):
         if found:
             errors.append("[[%s]] still contains Chinese: %s" % (m, " ".join(found[:5])))
         extra_nums = number_mismatch(zh, en)
+        for term, word in literal_slang(book, zh, en):
+            warnings.append("Slang check: [[%s]] has %s, a slang/stand-in word, and the English "
+                            "says '%s' - is that a word-for-word translation? See the slang table "
+                            "in the task file. (Fine if it really is meant literally here.)"
+                            % (m, term, word))
         if extra_nums:
             warnings.append("Number check: [[%s]] says %s in English, but the Chinese has no such "
                             "number. Check it against the original; if the English is right, keep it." % (
@@ -1427,6 +1521,9 @@ def cmd_check(args):
                   "  SUMMARY: one or two English sentences about what happened in this passage\n"
                   "  TERM: 中文 | English | type | note     (one line per NEW name/term you translated)\n"
                   "  CHAR: 中文 | English | gender | note    (one line per NEW character)\n"
+                  "  SLANG: 中文 | meaning | tone | English | how to handle | literal words to avoid\n"
+                  "         (one line per NEW slang word, in-joke or stand-in word this book uses "
+                  "again and again)\n"
                   "  FLAG: P10 | why a human should check it  (a pun you could not keep, a line "
                   "you are unsure of)\n"
                   "then run `" + py_cmd() + " accept`.")
@@ -1482,7 +1579,10 @@ def cmd_accept(args):
     sums.append({"chunk": cid, "chapter": str(src["chapter"]), "summary": summary})
     sums.sort(key=lambda r: r["chunk"])
     write_tsv(book.ws / "summaries.tsv", ["chunk", "chapter", "summary"], sums)
-    for line in merge_bible(book, terms, chars):
+    slang_rows, slang_problems = parse_slang(notes)
+    for p in slang_problems:
+        out("SKIPPED: " + p)
+    for line in merge_bible(book, terms, chars) + merge_slang(book, slang_rows):
         out(line)
     flags = parse_flags(notes)
     if flags:
