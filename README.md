@@ -6,7 +6,7 @@ Give your agent a Chinese novel (`.txt` or `.epub`). It translates the book pass
 
 [中文说明](README.zh-CN.md)
 
-**New in v0.9.0 (testing):** translate into Japanese instead, with `init ... --lang ja`. Names and genre terms keep their kanji in Japanese form; the checks catch leftover Chinese characters. English is still the default and works exactly as before.
+**New: Japanese (beta).** Translate into Japanese instead with `init ... --lang ja`. Names and genre terms keep their kanji in Japanese form; the checks catch leftover Chinese characters, Chinese idioms copied into kanji, and stand-in words translated literally. Tested on about 25 passages of a xianxia novel (DeepSeek V4.1 Flash); not yet reviewed by a native Japanese reader, so feedback is very welcome. English is still the default and works exactly as before.
 
 ## Why it works with cheap models
 
