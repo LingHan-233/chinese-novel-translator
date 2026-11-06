@@ -90,8 +90,10 @@ long book), tell the user; the translation still works, only titles will be miss
    - Read it and write one `VERDICT:` line per word into `work/scan_result.md`, as the task
      explains. **Literal is the default**: call a word a stand-in only when several examples
      make no sense literally. Say `low` when unsure; a person will decide.
-   - `novel.py scan-apply`. High-confidence stand-ins go into the slang list, high-confidence
-     literal words are switched off, and everything uncertain becomes a flag.
+   - `novel.py scan-apply`. High-confidence stand-ins (and plain vulgar words) go into the slang
+     list, high-confidence literal words are switched off, and everything uncertain becomes a flag.
+     A switched-off word gets no slang hint anywhere in this book; if it later turns out to be a
+     stand-in after all, delete it from `bible/slang_off.txt` and add a SLANG line.
    - Show the user the result and ask about the flagged words; record their answers as
      `SLANG:` / `NOSLANG:` lines and `novel.py add` them. Run `scan` again until it says
      nothing new (it shows at most 30 words at a time).

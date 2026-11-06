@@ -1,4 +1,4 @@
-# Chinese Novel Translator (v0.8.0)
+# Chinese Novel Translator (v0.8.1)
 
 Read Chinese web novels in English with your own AI agent.
 

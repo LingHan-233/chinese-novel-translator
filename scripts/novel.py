@@ -27,7 +27,7 @@ from html.parser import HTMLParser
 from pathlib import Path
 import xml.etree.ElementTree as ET
 
-VERSION = "0.8.0"
+VERSION = "0.8.1"
 SKILL_DIR = Path(__file__).resolve().parent.parent
 HOME_NAME = "novel-translations"
 
@@ -1994,16 +1994,48 @@ def book_paragraphs(book):
     return rows
 
 
+CLEAN_EDGE = set("，。！？、；：…—“”‘’\"'（）()《》【】 \n的了着过在里上下被把呢吗吧啊呀哦嘛就也都又还是")
+
+
+def occurrence_score(p, i, word):
+    """How likely the match at p[i] is the word itself and not two words touching
+    (拉«开车»门 = 拉开 + 车门, 召«开开»学 = 召开 + 开学). Higher is cleaner."""
+    before = p[i - 1] if i > 0 else "\n"
+    after = p[i + len(word)] if i + len(word) < len(p) else "\n"
+    score = 0
+    if before in CLEAN_EDGE or before in NOUN_BEFORE:
+        score += 1
+    if after in CLEAN_EDGE:
+        score += 1
+    return score
+
+
 def spread_examples(paras, word, k, width=40):
-    hits = [(lab, p) for lab, p in paras if word in p]
+    """Up to k examples from different parts of the book, whole-word matches first."""
+    hits = []
+    for lab, p in paras:
+        i = p.find(word)
+        while i >= 0:
+            hits.append((occurrence_score(p, i, word), lab, p, i))
+            i = p.find(word, i + 1)
     if not hits:
         return []
-    if len(hits) > k:
-        step = (len(hits) - 1) / float(k - 1) if k > 1 else 0
-        hits = [hits[int(round(i * step))] for i in range(k)]
+
+    def spread(rows, n):
+        if len(rows) <= n:
+            return rows
+        step = (len(rows) - 1) / float(n - 1) if n > 1 else 0
+        return [rows[int(round(j * step))] for j in range(n)]
+
+    clean = [h for h in hits if h[0] >= 1]
+    rest = [h for h in hits if h[0] < 1]
+    chosen = spread(clean, k)
+    if len(chosen) < k:
+        chosen += spread(rest, k - len(chosen))
+    order = {id(h): n for n, h in enumerate(hits)}
+    chosen.sort(key=lambda h: order[id(h)])
     out_rows = []
-    for lab, p in hits:
-        i = p.find(word)
+    for score, lab, p, i in chosen:
         a, b = max(0, i - width), min(len(p), i + len(word) + width)
         text = ("..." if a > 0 else "") + p[a:i] + "«" + word + "»" + p[i + len(word):b] + \
             ("..." if b < len(p) else "")
@@ -2026,6 +2058,13 @@ this book, each with examples from different parts of the book. Decide what each
   child's nickname; 小兄弟 is usually just "a young man"; 开车 is usually just driving. The
   "shared table says" note is only a hint about what the word *can* mean.
 - A doubled word used as a pet name, a person's nickname or a sound is literal.
+- A well-known fixed meme or phrase (一万只草泥马奔腾而过) can be decided from one clear example.
+- «» marks a plain text match. Sometimes it straddles two words (拉«开车»门 = 拉开 + 车门,
+  召«开开»学 = 召开 + 开学): ignore those examples and judge from the rest.
+- A word that is simply crude or vulgar (not standing in for anything) is **vulgar**: it needs
+  crude English, not a literal one.
+- Your verdict applies to the whole book. If a word is literal almost everywhere but you see a
+  real stand-in use too, say **unsure** and describe both.
 - Confidence: **high** only if the examples clearly point one way. Otherwise **low**: a person
   will look at it. Never guess high to be helpful; a wrong "stand-in" spoils every later
   passage where the word is meant normally.
@@ -2035,6 +2074,7 @@ Write one line per word into `work/scan_result.md`, nothing else:
 
     VERDICT: 词 | stand-in | high | what it stands for | tone | suggested English | how to handle | literal English to avoid (comma-separated)
     VERDICT: 词 | literal | high | what it means here (e.g. a young man; a calf named 牛牛)
+    VERDICT: 词 | vulgar | high | what it means | tone | suggested English | how to handle | literal English to avoid
     VERDICT: 词 | unsure | low | why (what the examples suggest)
 
 A stand-in line may also use low confidence. Write the English parts in English.
@@ -2116,12 +2156,12 @@ def cmd_scan_apply(args):
         if term not in words:
             problems.append("Not one of the scanned words: " + term)
             continue
-        if kind not in ("stand-in", "literal", "unsure") or conf not in ("high", "low"):
-            problems.append("Use stand-in/literal/unsure and high/low: " + line)
+        if kind not in ("stand-in", "vulgar", "literal", "unsure") or conf not in ("high", "low"):
+            problems.append("Use stand-in/vulgar/literal/unsure and high/low: " + line)
             continue
-        if kind == "stand-in" and (len(f) < 6 or not f[5] or has_cjk(f[5])):
-            problems.append("A stand-in line needs: meaning | tone | English suggestion | how to "
-                            "handle | literal words to avoid: " + line)
+        if kind in ("stand-in", "vulgar") and (len(f) < 6 or not f[5] or has_cjk(f[5])):
+            problems.append("A " + kind + " line needs: meaning | tone | English suggestion | how "
+                            "to handle | literal words to avoid: " + line)
             continue
         verdicts[term] = f
     missing = [w for w in words if w not in verdicts]
@@ -2134,14 +2174,15 @@ def cmd_scan_apply(args):
         sys.exit(1)
     shared_terms = {r.get("term") for r in read_tsv(SKILL_DIR / "slang" / "zh_internet_slang.tsv")}
     slang_rows, off_terms, flags, done_rows = [], [], [], []
-    summary = {"stand-in": [], "literal": [], "check": []}
+    summary = {"stand-in": [], "vulgar": [], "literal": [], "check": []}
     for w in words:
         f = verdicts[w] + [""] * 8
         kind, conf = f[1].lower(), f[2].lower()
-        if kind == "stand-in" and conf == "high":
-            slang_rows.append({"term": w, "meaning": f[3], "tone": f[4], "default_en": f[5],
+        if kind in ("stand-in", "vulgar") and conf == "high":
+            tone = f[4] if kind == "stand-in" else ("vulgar" + (", " + f[4] if f[4] else ""))
+            slang_rows.append({"term": w, "meaning": f[3], "tone": tone, "default_en": f[5],
                                "strategy": f[6], "avoid": f[7]})
-            summary["stand-in"].append(w)
+            summary[kind].append(w)
         elif kind == "literal" and conf == "high":
             if w in shared_terms:
                 off_terms.append(w)
@@ -2164,7 +2205,12 @@ def cmd_scan_apply(args):
     book.cfg["scan"] = None
     book.save()
     out("Stand-in (added to the slang list): " + (", ".join(summary["stand-in"]) or "none"))
-    out("Literal (no special handling): " + (", ".join(summary["literal"]) or "none"))
+    out("Vulgar (added to the slang list as crude words): " + (", ".join(summary["vulgar"]) or "none"))
+    plain = [w for w in summary["literal"] if w not in off_terms]
+    out("Literal: " + (", ".join(plain) or "none"))
+    if off_terms:
+        out("Literal, and the shared slang hint is switched off for the whole book: "
+            + ", ".join(off_terms) + "  (undo: delete the line from bible/slang_off.txt)")
     out("For the user to check (saved as flags): " + (", ".join(summary["check"]) or "none"))
     nxt("Show the user these three lists, with the examples for the 'check' words from "
         "work/scan_task.md, and ask what each means. Record their answers as SLANG: or NOSLANG: "
