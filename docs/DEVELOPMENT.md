@@ -33,7 +33,7 @@
 | `core/translation_rules.md`、`core/names.md` | 每个任务文件都会附带的翻译规则、专名规则 |
 | `genres/*.md` | 题材模块：general / xianxia / urban / historical |
 | `lang/en/style_guide.md`、`lang/en/examples.md` | 英文风格和通用示例（带题材标签） |
-| `lang/ja/` | 日语版：`translation_rules.md`、`names.md`、`style_guide.md`、`genres/xianxia.md`、`genres/general.md`（**草稿，未经懂日语的人核对**）；还没有 `examples.md` |
+| `lang/ja/` | 日语版：`translation_rules.md`、`names.md`、`style_guide.md`、`genres/xianxia.md`、`genres/general.md`（**草稿，经第二模型审阅一轮，未经懂日语的人核对**）；还没有 `examples.md` |
 | `slang/zh_internet_slang.tsv` | 共享用语表，6 列：term, meaning, tone, default_en, strategy, avoid（tone 含 `stand-in` 表示替代词；avoid = 要避免的字面英文） |
 | `templates/` | 空白术语表、角色表、梗概 |
 | `tests/sample_book.txt` | 原创示例小说，试跑流程用 |
@@ -83,7 +83,7 @@ init, candidates, scan, scan-apply, add, next, check, review(=polish), accept, s
 - 每个新梗第一次出现时仍然要靠模型或人看出来（scan 只覆盖建书时能扫到的候选）。
 - `scan` 测试时 agent 知道自己在被测误判，正常使用时可能没那么谨慎。
 - README 的"目前的测试结果"一节还停在 v0.6 的数据，可以补上 scan 的结果。
-- **日语版（v0.9.0）未经真模型测试**：
+- **日语版只用真模型测过一轮（v0.9.0，9 个 passage）**：
   - 长度检查：日语字数 / 中文字数 < 0.6 算太短，> 3.0 算太长，中文 ≥15 字的段才查。实测正常比例 1.45–1.63，阈值暂不动，15 字门槛的误报率还要再看。
   - 数字检查在日语一侧用"十分、一応、一度"等例外词表防误报，词表是手写的，可能还有漏网的误报。
   - "日语不用的字"按 cp932（日本常用字符集）判断：不在里面的汉字一律报错（如 剑、们、躲），另外手动列了几个在字符集里但现代日语不用的字（个、从、气……）。名字里确实没有日文字形的字用 `set keep_chars`。
@@ -126,4 +126,4 @@ init, candidates, scan, scan-apply, add, next, check, review(=polish), accept, s
 - [x] v0.9.0 真模型试译一轮（见第 5 节），问题已在 v0.9.1 修。
 - [ ] 第 2 步：表格多语言（共享用语表加日语列，书的术语表列名）。
 - [ ] 第 3 步：日语示例 `lang/ja/examples.md`（全部原创），都市、历史题材说明。
-- [ ] 用真模型试译：示例书 + 真书几章，出报告。
+- [ ] v0.9.1 再试译一轮，确认修复（提示词见项目文档《日语版测试提示词》）。
