@@ -27,7 +27,7 @@ from html.parser import HTMLParser
 from pathlib import Path
 import xml.etree.ElementTree as ET
 
-VERSION = "0.7.1"
+VERSION = "0.7.2"
 SKILL_DIR = Path(__file__).resolve().parent.parent
 HOME_NAME = "novel-translations"
 
@@ -564,14 +564,23 @@ class Book:
     def characters(self):
         return read_tsv(self.bible / "characters.tsv")
 
+    def slang_off(self):
+        p = self.bible / "slang_off.txt"
+        if not p.exists():
+            return set()
+        return {ln.strip() for ln in p.read_text(encoding="utf-8").splitlines()
+                if ln.strip() and not ln.startswith("#")}
+
     def slang(self):
-        """Shared slang table plus this book's own (bible/slang_extra.tsv). The book wins."""
+        """Shared slang table plus this book's own (bible/slang_extra.tsv). The book wins.
+        Terms listed in bible/slang_off.txt are dropped."""
+        off = self.slang_off()
         merged = {}
         for r in read_tsv(SKILL_DIR / "slang" / "zh_internet_slang.tsv"):
             merged[r.get("term", "")] = r
         for r in read_tsv(self.bible / "slang_extra.tsv"):
             merged[r.get("term", "")] = dict(r, book="yes")
-        return [r for t, r in merged.items() if t]
+        return [r for t, r in merged.items() if t and t not in off]
 
     def summaries(self):
         return read_tsv(self.ws / "summaries.tsv")
@@ -760,41 +769,94 @@ COMMON_DOUBLED = set(
     "常渐慢刚妈爸哥姐弟妹爷奶叔舅姥婆公伯姑宝星往偏天年人处个默轻静紧微悄好久时纷匆连稍隐淡冷深狠"
     "重缓远早统仅白生足呵哈嘿嘻嗯啊哼呜嘤咚轰哒滴啪砰谢看想试说走等种样句声步层道条片点丝阵团家事区"
     "堂赫茫滚腾熊蒙楚翩姗涛哗呼嗡叮咕噗嘎嘶哦唉喂嗷呃咳咦哇哎嗒噼滋扑沙簌汪喵蹭飕刷咔吱叽咯嘀唰"
-    "怔愣暗明高低大小多少快真恰频频屡屡源源恰恰苦苦乖乖实实明明暗暗来去上下左右前后东西南北口心眼手")
+    "怔愣暗明高低大小多少快真恰频频屡屡源源恰恰苦苦乖乖实实明明暗暗来去上下左右前后东西南北口心眼手"
+    "一死笑整问了平齐满悠面麻短密长隆喃翼老瑟哆嗦絮叨唠扭歪弯斑点亮闪灼熠皑袅潺汩淙铮锵叮当"
+    "朦胧迷懵呆傻乐美甜香暖凉温柔软硬粗细厚薄胖瘦鼓圆尖方直空晃摇荡飘漂摆抖颤蹦跳拍敲踢挠捏揉")
 
 
-def scan_stand_ins(book, known):
-    """Point out doubled words (金金, 牛牛) and shared stand-in words anywhere in the book."""
-    text_parts = []
+# a doubled word that is really "...宗" + "宗主" (星岚宗宗主), not a word of its own
+SEAM_NEXT = set("主长老首众弟徒规内外")
+# characters that, right before a word, suggest it is used as a noun: 的金金, 那根牛至, 把金金
+NOUN_BEFORE = set("的个根条只颗块把对两几些这那他她它我你其被将拿摸抓掏露")
+FUNCTION_BEFORE = set("的了是在着地得不也都就又还很太把被给让和与他她它我你这那一")
+
+
+def book_text(book):
+    parts = []
     for ch in book.cfg["chapters"]:
         if ch.get("skip"):
             continue
         for cid in ch["chunks"]:
-            text_parts.extend(book.source(cid)["paras"])
-    text = "\n".join(text_parts)
+            parts.extend(book.source(cid)["paras"])
+    return "\n".join(parts)
+
+
+def snippet(text, word, width=8):
+    i = text.find(word)
+    if i < 0:
+        return ""
+    a, b = max(0, i - width), min(len(text), i + len(word) + width)
+    return "..." + text[a:b].replace("\n", " ") + "..."
+
+
+def doubled_candidates(text, exclude, limit=30):
+    """Doubled words that look like nouns (金金, 牛牛), skipping name seams (宗宗主), idiom
+    pieces (小心翼翼, 老老实实) and very common words. Ranked by how noun-like they are."""
+    occ = {}
+    for m in re.finditer(r"([\u4e00-\u9fff])\1", text):
+        w, c = m.group(0), m.group(1)
+        if c in COMMON_DOUBLED or w in exclude:
+            continue
+        before = text[m.start() - 1] if m.start() > 0 else ""
+        after = text[m.end()] if m.end() < len(text) else ""
+        after2 = text[m.end():m.end() + 2]
+        occ.setdefault(w, []).append((before, after, after2))
+    result = []
+    for w, hits in occ.items():
+        n = len(hits)
+        if n < 3:
+            continue
+        if sum(1 for _, a, _ in hits if a in SEAM_NEXT) > n / 2:
+            continue  # 宗宗主, 庄庄主
+        if sum(1 for _, _, a2 in hits if len(a2) == 2 and a2[0] == a2[1]) > n / 2:
+            continue  # 老老实实
+        befores = Counter(b for b, _, _ in hits)
+        top_b, top_n = befores.most_common(1)[0]
+        if top_n > n * 0.8 and top_b and top_b not in FUNCTION_BEFORE and n >= 5:
+            continue  # 小心翼翼: always the same character in front
+        noun = sum(1 for b, _, _ in hits if b in NOUN_BEFORE) / float(n)
+        if n > 150:
+            noun *= 0.5  # very frequent words are almost never in-jokes
+        result.append((round(noun, 2), n, w))
+    result.sort(key=lambda r: (-r[0], -r[1]))
+    return [(w, n, noun) for noun, n, w in result[:limit]]
+
+
+def scan_stand_ins(book, known):
+    """Point out doubled words (金金, 牛牛) and shared stand-in words anywhere in the book."""
+    text = book_text(book)
     slang_terms = {r.get("term") for r in book.slang()}
-    doubled = Counter(m.group(0) for m in re.finditer(r"([\u4e00-\u9fff])\1", text)
-                      if m.group(1) not in COMMON_DOUBLED)
-    doubled = [(c, w) for w, c in doubled.items()
-               if c >= 3 and w not in known and w not in slang_terms]
-    doubled.sort(reverse=True)
+    doubled = doubled_candidates(text, known | slang_terms)
     stand_ins = []
     for r in book.slang():
         if "stand-in" in (r.get("tone") or "") and r.get("term") in text:
             stand_ins.append((text.count(r["term"]), r["term"]))
     stand_ins.sort(reverse=True)
     out("")
-    out("Doubled words in the whole book (金金, 牛牛 style). Most are harmless, but web novels "
-        "often use a cute doubled word or a homophone as a stand-in for a rude one. Look at "
-        "where the frequent ones are used:")
+    out("Doubled words that look like nouns (金金, 牛牛 style), whole book, most noun-like first. "
+        "Web novels often use a cute doubled word as a stand-in for a rude one. Read the "
+        "example; most will be harmless:")
     if doubled:
-        out("  " + "  ".join("%s(%d)" % (w, c) for c, w in doubled[:24]))
+        for w, n, _ in doubled:
+            out("  %s(%d)  %s" % (w, n, snippet(text, w)))
     else:
         out("  (none)")
     if stand_ins:
-        out("Known stand-in words from the shared slang table that appear in this book "
-            "(check that the table's meaning fits this book; if not, add your own SLANG line):")
-        out("  " + "  ".join("%s(%d)" % (w, c) for c, w in stand_ins))
+        out("Stand-in words from the shared slang table that appear in this book. Check the "
+            "example: if a word is always meant literally in this book (小兄弟 = a young man), "
+            "add a line `NOSLANG: 小兄弟` to your notes so it stops being flagged:")
+        for c, w in stand_ins:
+            out("  %s(%d)  %s" % (w, c, snippet(text, w)))
 
 
 # ---------------------------------------------------------- notes merging
@@ -855,6 +917,29 @@ def parse_slang(text):
         rows.append({"term": f[0], "meaning": f[1], "tone": f[2], "default_en": f[3],
                      "strategy": f[4], "avoid": f[5]})
     return rows, problems
+
+
+def parse_noslang(text):
+    terms = []
+    for raw in text.splitlines():
+        line = raw.strip().lstrip("-*").strip()
+        if line.upper().startswith("NOSLANG:"):
+            terms += [t.strip() for t in re.split(r"[|,，/ ]+", line.split(":", 1)[1]) if t.strip()]
+    return terms
+
+
+def merge_noslang(book, terms):
+    if not terms:
+        return []
+    have = book.slang_off()
+    new = [t for t in terms if t not in have]
+    if new:
+        p = book.bible / "slang_off.txt"
+        old = p.read_text(encoding="utf-8") if p.exists() else (
+            "# Slang-table words that are always meant literally in this book. One per line.\n")
+        p.write_text(old.rstrip("\n") + "\n" + "\n".join(new) + "\n", encoding="utf-8")
+        return ["Slang table switched off for this book: " + ", ".join(new)]
+    return []
 
 
 def merge_slang(book, rows):
@@ -981,7 +1066,8 @@ def cmd_add(args):
     slang_rows, slang_problems = parse_slang(text)
     for p in problems + slang_problems:
         out("SKIPPED: " + p)
-    for line in merge_bible(book, terms, chars) + merge_slang(book, slang_rows):
+    for line in (merge_bible(book, terms, chars) + merge_slang(book, slang_rows)
+                 + merge_noslang(book, parse_noslang(text))):
         out(line)
     nxt("Run `" + py_cmd() + " next` to start translating (or add more names first). If a task "
         "file is already open, `" + py_cmd() + " next --force` refreshes it.")
@@ -1632,7 +1718,8 @@ def cmd_accept(args):
     slang_rows, slang_problems = parse_slang(notes)
     for p in slang_problems:
         out("SKIPPED: " + p)
-    for line in merge_bible(book, terms, chars) + merge_slang(book, slang_rows):
+    for line in (merge_bible(book, terms, chars) + merge_slang(book, slang_rows)
+                 + merge_noslang(book, parse_noslang(notes))):
         out(line)
     flags = parse_flags(notes)
     if flags:

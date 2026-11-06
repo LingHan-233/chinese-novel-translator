@@ -53,8 +53,10 @@ long book), tell the user; the translation still works, only titles will be miss
 
 1. Run `novel.py candidates`. It lists frequent words (most are ordinary words), doubled words
    from the whole book (金金, 牛牛: often cute stand-ins for rude words), and stand-in words from
-   the shared slang table that the book uses. Look at how the doubled and stand-in words are used
-   before deciding they are harmless.
+   the shared slang table that the book uses, each with an example from the text. Read the
+   examples before deciding they are harmless. If a shared slang word is always meant literally
+   in this book (小兄弟 really is "a young man"), add `NOSLANG: 小兄弟` to your notes: the slang
+   table then stops showing and checking it for this book (saved in `bible/slang_off.txt`).
 2. Read the beginning of the book (the first chapter or two of the original file).
 3. Write `work/bible_notes.md` with one line per main character and per recurring special term:
    ```
