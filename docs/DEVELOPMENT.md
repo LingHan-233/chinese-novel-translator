@@ -1,11 +1,11 @@
 # 开发交接文档（chinese-novel-translator）
 
 > 写给接手开发的人或 AI。读完这份文档，应该能在不翻聊天记录的情况下继续开发。
-> 最后更新：2026-11-06，对应版本 **v0.8.1**。
+> 最后更新：2026-11-06，对应版本 **v0.9.0**（日语版第 1 步已完成，尚未发布）。
 
 ## 1. 项目是什么
 
-- 一个 agent skill：用户把中文网文（.txt / .epub）交给自己的 AI agent，agent 按 `SKILL.md` 逐段翻成英文，输出 .epub / .html / .md。
+- 一个 agent skill：用户把中文网文（.txt / .epub）交给自己的 AI agent，agent 按 `SKILL.md` 逐段翻成英文（v0.9.0 起可选日语：`init --lang ja`），输出 .epub / .html / .md。
 - 仓库：https://github.com/LingHan-233/chinese-novel-translator （公开，MIT，署名 LingHan-233）。
 - 维护者（LingHan-233）计划在 X 上推荐中文小说，并把这个工具分享给海外读者自己翻译阅读。
 - 维护者的情况：中文母语，**英语不太好**，不是程序员。沟通用中文，解释要通俗；英文质量无法亲自判断，所以依赖"另一个模型修改 + 中文复述核对"。
@@ -29,22 +29,30 @@
 |---|---|
 | `SKILL.md` | 给 agent 的操作说明（第 0–5 步 + 命令表） |
 | `AGENTS.md` | 让不支持 skill 的 agent 也能找到 SKILL.md |
-| `scripts/novel.py` | 全部逻辑，约 2560 行，只用 Python 标准库，3.8+ |
+| `scripts/novel.py` | 全部逻辑，约 2810 行，只用 Python 标准库，3.8+ |
 | `core/translation_rules.md`、`core/names.md` | 每个任务文件都会附带的翻译规则、专名规则 |
 | `genres/*.md` | 题材模块：general / xianxia / urban / historical |
 | `lang/en/style_guide.md`、`lang/en/examples.md` | 英文风格和通用示例（带题材标签） |
+| `lang/ja/` | 日语版：`translation_rules.md`、`names.md`、`style_guide.md`、`genres/xianxia.md`、`genres/general.md`（**草稿，未经懂日语的人核对**）；还没有 `examples.md` |
 | `slang/zh_internet_slang.tsv` | 共享用语表，6 列：term, meaning, tone, default_en, strategy, avoid（tone 含 `stand-in` 表示替代词；avoid = 要避免的字面英文） |
 | `templates/` | 空白术语表、角色表、梗概 |
 | `tests/sample_book.txt` | 原创示例小说，试跑流程用 |
 | `tests/scan_sample_a.txt` / `_b.txt` | 替代词误判测试用的原创短篇（标准答案不在仓库里，见第 6 节） |
 | `tests/inject_errors.py` | 在译文里埋意思错误，测试复核能不能抓到 |
+| `tests/workflow_run.py` | 用假译文把整个流程（init → 扫描 → 翻译/检查/复核/accept → 试译停止 → pin → rename/redo → build）跑一遍，记录每条命令的输出和每个任务文件。改代码后用新旧两个版本各跑一遍再 diff，确认英文版没被改坏（用法见文件开头） |
 | `VERSION` | 版本号，需与 `novel.py` 里的 `VERSION` 一致 |
+
+**语言相关文件的查找规则**（`lang_text` / `genre_text`）：任务文件先找 `lang/<语言>/` 下的同名文件；英文没有自己的 `translation_rules.md` / `names.md`，用 `core/` 的；英文题材用 `genres/`，其他语言只用 `lang/<语言>/genres/`，没有就显示"暂无该题材说明"（英文题材说明里全是英文译法，不能给日语用）。
 
 用户的工作区（不进仓库，`.gitignore` 已排除）：`novel-translations/<书>/`，里面有 `book.json`、`source/`、`translated/`、`work/`（当前任务、输出、笔记）、`bible/`（glossary.tsv、characters.tsv、slang_extra.tsv、slang_off.txt、scan_done.tsv、examples.md、flags.tsv、conflicts.tsv、synopsis.md）、`output/`。
 
 ## 4. 命令一览（`novel.py --help`）
 
 init, candidates, scan, scan-apply, add, next, check, review(=polish), accept, status, set, pin, flags, set-char, rename, skip, unskip, redo, build。
+
+- `init --lang en|ja`：目标语言，存在 `book.json` 的 `target_lang`（默认 en）。
+- `set lang ja`：只能在还没翻译、术语表和角色表都空的时候改。
+- `set keep_chars 玥`：日语书专用，允许某个日语里没有的字留在译文里（只给人名用；`none` 清空）。
 
 主流程：`init` → `candidates` + 写 CHAR/TERM/SLANG 行 → `add` → `scan` → 写 VERDICT → `scan-apply` → 循环 [`next` → 翻译 → `check` → `review` → `check` → 写笔记 → `accept`] → 第一章后试译停止（`pin` 示例、问用户）→ `set trial false` → 继续 → `build`。
 
@@ -61,6 +69,7 @@ init, candidates, scan, scan-apply, add, next, check, review(=polish), accept, s
 | v0.7.1–0.7.2 | 全书叠词扫描、NOSLANG、"俩/双"数字误报 | 按频次排序在整本书上失效，改为按"像不像名词"排序 + 附例句 |
 | v0.8.0 | `scan`：模型结合多处例句判断替代词 | 两本测试书 + 真书 60 词：**零误判**，目标词全部判对 |
 | v0.8.1 | 例句优先选整词、`vulgar` 档、固定梗一句可判 | 未单独重测（改动小） |
+| v0.9.0 | 日语版第 1 步：`--lang`、按语言分开的检查、日语草稿说明、成书的语言标签 | 英文版：新旧两版用 `tests/workflow_run.py` 跑完整流程，任务文件、复核文件、bible、成书完全相同，只多一行"Translating into"提示。日语版：只用假译文跑通流程，**还没让真模型翻过** |
 
 各轮测试报告由维护者保管，没有放进仓库（含真书原文）。
 
@@ -73,6 +82,13 @@ init, candidates, scan, scan-apply, add, next, check, review(=polish), accept, s
 - 每个新梗第一次出现时仍然要靠模型或人看出来（scan 只覆盖建书时能扫到的候选）。
 - `scan` 测试时 agent 知道自己在被测误判，正常使用时可能没那么谨慎。
 - README 的"目前的测试结果"一节还停在 v0.6 的数据，可以补上 scan 的结果。
+- **日语版（v0.9.0）未经真模型测试**：
+  - 长度检查的阈值（日语字数 / 中文字数 < 0.6 算太短，> 3.0 算太长）是估的，正常比例约 1.5，要用真译文校准。
+  - 数字检查在日语一侧用"十分、一応、一度"等例外词表防误报，词表是手写的，可能还有漏网的误报。
+  - "日语不用的字"按 cp932（日本常用字符集）判断：不在里面的汉字一律报错（如 剑、们、躲），另外手动列了几个在字符集里但现代日语不用的字（个、从、气……）。名字里确实没有日文字形的字用 `set keep_chars`。
+  - 共享用语表（`slang/zh_internet_slang.tsv`）的建议译法和 avoid 列都是英文：日语书里任务文件会提示"如果是英文就用日语对应说法"，字面直译警告对共享表的词不起作用（书自己的 SLANG 行写日语就能起作用）。这是第 2 步要解决的。
+  - 书自己的术语表、角色表沿用 `en` 列存日语译名（第 2 步再决定列名）。
+  - 人名只保留汉字、不加读音；以后可以考虑 HTML/EPUB 的 `<ruby>` 注音。
 - 速度：从零翻译约 45–50 秒/passage，每段输入 5–7k token；整本 270 万字的书需要几十小时机器时间。
 
 `tests/scan_sample_*` 的标准答案由维护者保管，不放进仓库（仓库是公开的，被测的 agent 可能读到）。
@@ -83,7 +99,7 @@ init, candidates, scan, scan-apply, add, next, check, review(=polish), accept, s
 - 推送 tag 时经常被代理断开，所以 **Release 和 tag 由维护者在 GitHub 网页上创建**（Releases → Draft a new release → 输入新 tag → Publish）。目前只建了 v0.6.1 的 Release。
 - 每次发版：改 `VERSION`、`novel.py` 里的 `VERSION`、README 标题里的版本号；提交说明写清改了什么；另外打一个 zip 发给维护者（解压后就是仓库内容，不含 `.git`）。
 
-## 8. 下一步：日语版（已讨论，尚未开工）
+## 8. 日语版（进行中）
 
 维护者希望用户可以选择翻译成日语。评估：可行，难度中等，代码量约为英文版的三分之一。要点：
 
@@ -99,4 +115,11 @@ init, candidates, scan, scan-apply, add, next, check, review(=polish), accept, s
 5. **质量把关**：维护者大概率不懂日语。沿用"另一个模型修改 + 中文复述核对"的办法写 `lang/ja/` 的示例，最好请懂日语的人看一眼。示例全部原创。
 6. **测试**：先用 `tests/sample_book.txt` 和 `tests/scan_sample_*.txt` 跑通，再在真书上试译几章，按第 1 节的测试循环出报告。
 
-建议顺序：先做"语言参数 + 按语言分开的检查"（不影响英文版），再做表格多语言，最后写日语风格和示例。每一步都要确认英文版的流程没被改坏（用 `tests/sample_book.txt` 完整跑一遍）。
+建议顺序：先做"语言参数 + 按语言分开的检查"（不影响英文版），再做表格多语言，最后写日语风格和示例。每一步都要确认英文版的流程没被改坏（用 `tests/workflow_run.py` 新旧版本各跑一遍再 diff）。
+
+**进度（2026-11-06）**
+- [x] 第 1 步：语言参数 + 按语言分开的检查（v0.9.0）。已做：`init --lang`、`set lang`、`set keep_chars`；残留中文（日语不用的字 / 中文专用字 / 整段没有假名）、按字数的长度检查、日语数字检查、日语否定词（抽查复核用）、日语注释和开场白检查；STYLE_LINT 只对英文；任务文件、复核文件、扫描任务、笔记提示里的语言名；EPUB/HTML 的语言标签、日文目录/章节名/声明、输出文件名 `-ja`。
+- [x] 为了能实测，先写了 `lang/ja/` 的规则、人名、风格、仙侠和通用题材**草稿**（第 3 步的一部分）。待维护者用"另一个模型修改 + 中文复述核对"把关。
+- [ ] 第 2 步：表格多语言（共享用语表加日语列，书的术语表列名）。
+- [ ] 第 3 步：日语示例 `lang/ja/examples.md`（全部原创），都市、历史题材说明。
+- [ ] 用真模型试译：示例书 + 真书几章，出报告。

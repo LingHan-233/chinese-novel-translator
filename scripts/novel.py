@@ -27,7 +27,7 @@ from html.parser import HTMLParser
 from pathlib import Path
 import xml.etree.ElementTree as ET
 
-VERSION = "0.8.1"
+VERSION = "0.9.0"
 SKILL_DIR = Path(__file__).resolve().parent.parent
 HOME_NAME = "novel-translations"
 
@@ -50,6 +50,8 @@ SETTABLE = {
     "chunk_chars": "int",
     "title_en": "str",
     "author_en": "str",
+    "lang": "lang",
+    "keep_chars": "str",
 }
 
 META_PHRASES = [
@@ -101,6 +103,12 @@ def cn_numbers(text):
     for m in re.finditer(r"([一二两三四五六七八九十])成", text):
         n = CN_DIGIT.get(m.group(1), 10)
         vals.update({n, n * 10, 10})
+    _number_runs(text, vals)
+    return vals
+
+
+def _number_runs(text, vals):
+    """Add the value of every run of digits or Chinese number characters in text to vals."""
     for run in CN_NUM_RE.findall(text):
         if run[0] in "0123456789０１２３４５６７８９":
             digits = run.translate(str.maketrans("０１２３４５６７８９", "0123456789"))
@@ -124,6 +132,13 @@ def cn_numbers(text):
                     section += (num or 1) * unit
                 num = 0
         vals.add(total + section + num)
+
+
+def ja_numbers(text):
+    """Numbers a Japanese translation states: digits and kanji numbers (一万, 三百),
+    leaving out words like 十分 (enough) or 一応 that only contain number kanji."""
+    vals = set()
+    _number_runs(JA_NUM_IDIOMS.sub("、", text.replace("億", "亿")), vals)
     return vals
 
 
@@ -185,15 +200,17 @@ EN_NEG_RE = re.compile(r"\b(not|no|never|nothing|nobody|none|neither|nor|cannot|
                        re.I)
 
 
-def negation_mismatch(zh, en):
+def negation_mismatch(zh, en, lang="en"):
     """True when only one side has a negation word. Noisy, so it only steers the spot review."""
-    return bool(ZH_NEG_RE.search(zh)) != bool(EN_NEG_RE.search(en or ""))
+    neg = JA_NEG_RE if lang == "ja" else EN_NEG_RE
+    return bool(ZH_NEG_RE.search(zh)) != bool(neg.search(en or ""))
 
 
-def number_mismatch(zh, en):
-    """Numbers the English states that the Chinese does not (1 is ignored: 'a', 'once', 'no one')."""
+def number_mismatch(zh, en, lang="en"):
+    """Numbers the translation states that the Chinese does not (1 is ignored: 'a', 'once', 'no one')."""
     zh_vals = cn_numbers(zh)
-    extra = sorted(v for v in en_numbers(en) - zh_vals if v not in (0, 1))
+    found = ja_numbers(en or "") if lang == "ja" else en_numbers(en)
+    extra = sorted(v for v in found - zh_vals if v not in (0, 1))
     return extra
 
 
@@ -201,6 +218,88 @@ STOP_CHARS = set(
     "的了是在我你他她它们这那不就也都着过吗呢吧啊么和与而又很太还没已被把让给对从到向"
     "一个有说道上下来去出看想要会能得地之其此所为以于什么怎样些自己好人中大小里"
 )
+
+
+# ----------------------------------------------------------- target languages
+# The book's target language is book.json "target_lang" (set with `init --lang`).
+# English is the default and behaves exactly as before; everything language-specific
+# for other languages is looked up here or in lang/<code>/.
+
+LANGS = {
+    "en": {"name": "English", "label": "EN"},
+    "ja": {"name": "Japanese", "label": "JA"},
+}
+
+KANA_RE = re.compile(r"[ぁ-ゟ゠-ヿㇰ-ㇿｦ-ﾟ]")
+# Chinese-only characters that are also in the Japanese (cp932) character set but are not
+# used in modern Japanese (个 for 個, 从 for 従, 气 for 気 ...).
+ZH_ONLY_IN_JIS = set("个从无它气听价决况坏愿档梦泪犹盖粮网赶嘛咋")
+# Words that only Chinese grammar uses: if they show up, the sentence was not translated.
+ZH_GRAMMAR = set("这们说么吗个对为时发经让过还进从她它您吧哪咱啥咋给样么")
+# 2010 jōyō forms that are not in cp932 but are correct Japanese.
+JA_EXTRA_OK = set("𠮟塡剝頰")
+JA_NOTE_PHRASES = ["訳注", "訳者注", "（注", "(注", "［注", "[注", "注：", "注:"]
+JA_META_PHRASES = ["以下は", "以下が", "翻訳：", "翻訳:", "訳文：", "訳文:", "日本語訳"]
+JA_NEG_RE = re.compile(r"ない|なかっ|なく|ません|ず[、。にとも]|ぬ|まい|無|不|非|未|なし|いや|いいえ")
+# Japanese words that contain number kanji without meaning a number (十分 = enough).
+JA_NUM_IDIOMS = re.compile(
+    r"十分|万が一|万一|一応|一体|一緒|一瞬|一斉|一気|一番|一層|一旦|一向|唯一|統一|同一|"
+    r"百も承知|千切|八つ当たり|四方八方|二度と|一度|一人|一つ|一言|一同|一方|一部|一切|万全|"
+    r"万事|万能|千載一遇|一石二鳥|三日月|七夕|八百屋|十八番|五分五分|九死に一生|"
+    r"万歳|千差万別|一目|一息|一声|一歩|一礼|一行|一角|一面|一族|一門|一派")
+
+
+def lang_info(code):
+    return LANGS.get(code or "en", LANGS["en"])
+
+
+def is_japanese_char(ch):
+    """True if a CJK character belongs to ordinary Japanese (it is in the cp932 set)."""
+    if ch in JA_EXTRA_OK:
+        return True
+    if ch in ZH_ONLY_IN_JIS:
+        return False
+    try:
+        ch.encode("cp932")
+        return True
+    except UnicodeEncodeError:
+        return False
+
+
+def leftover_chinese(text, lang="en", keep=""):
+    """Chinese left in a translation: (error message or "", list of the characters).
+    English: any CJK character. Japanese: kanji are fine, but characters Japanese does not
+    use (simplified forms like 剑, 门, or Chinese-only words like 这, 们) are not."""
+    if lang == "en":
+        found = CJK_RUN_RE.findall(text or "")
+        return ("still contains Chinese: " + " ".join(found[:5])) if found else "", found
+    bad = []
+    for ch in CJK_RE.findall(text or ""):
+        if ch not in keep and not is_japanese_char(ch) and ch not in bad:
+            bad.append(ch)
+    if not bad:
+        return "", bad
+    grammar = [c for c in bad if c in ZH_GRAMMAR]
+    if grammar:
+        return ("still contains Chinese (Chinese-only words: %s): translate the whole "
+                "sentence into Japanese." % " ".join(grammar[:5])), bad
+    return ("has characters that Japanese does not use: %s. Use the Japanese form "
+            "(剑→剣, 门→門, 灵→霊, 苏→蘇, 刘→劉) or write the word in kana or as another Japanese "
+            "word. Only if it is part of a name and has no Japanese form, run `%s set keep_chars %s`."
+            % (" ".join(bad[:8]), py_cmd(), "".join(bad[:8]))), bad
+
+
+def text_size(text, lang="en"):
+    """Length of a translation for the too-short/too-long check:
+    English counts words, Japanese counts characters (kana, kanji, letters, digits)."""
+    if lang == "en":
+        return word_count(text)
+    return len(re.findall(r"[\wぁ-ゟ゠-ヿ㐀-䶿一-鿿豈-﫿々〆ヶ]", text or ""))
+
+
+# too short / too long, in "translation size per Chinese character". English: words.
+# Japanese: characters (a Chinese passage usually becomes about 1.3-1.8 times as many).
+LENGTH_LIMITS = {"en": (0.25, 1.7), "ja": (0.6, 3.0)}
 
 
 # ----------------------------------------------------------------- utilities
@@ -585,6 +684,20 @@ class Book:
     def summaries(self):
         return read_tsv(self.ws / "summaries.tsv")
 
+    # target language
+    @property
+    def lang(self):
+        return self.cfg.get("target_lang") or "en"
+
+    @property
+    def lname(self):
+        return lang_info(self.lang)["name"]
+
+    def keep_chars(self):
+        """Characters a Japanese translation may keep although Japanese does not use them
+        (a name character with no Japanese form). Set with `set keep_chars`."""
+        return self.cfg.get("keep_chars") or ""
+
 
 def workspace_from_args(args):
     if getattr(args, "workspace", None):
@@ -609,6 +722,8 @@ def cmd_init(args):
         fail("File not found: " + str(src))
     if args.genre not in GENRES:
         fail("Unknown genre. Use one of: " + ", ".join(GENRES))
+    if args.lang not in LANGS:
+        fail("Unknown target language. Use one of: " + ", ".join(LANGS))
     skipped = []
     if src.suffix.lower() == ".epub":
         title, chapters, skipped = read_epub(src)
@@ -655,7 +770,7 @@ def cmd_init(args):
         "author_en": "",
         "source_file": str(src.resolve()),
         "genre": args.genre,
-        "target_lang": "en",
+        "target_lang": args.lang,
         "chunk_chars": args.chunk_chars,
         "trial": not args.no_trial,
         "polish": False,
@@ -688,6 +803,7 @@ def cmd_init(args):
         (len(chapters), n, total_chars))
     out("Genre module: " + args.genre + "   Trial mode: " + ("on" if cfg["trial"] else "off")
         + "   Review pass: " + args.review)
+    out("Translating into: %s (%s)" % (lang_info(args.lang)["name"], args.lang))
     if skipped:
         out("Left out (table of contents / navigation): " + ", ".join(skipped[:5]))
     out("First chapters found:")
@@ -862,7 +978,7 @@ def scan_stand_ins(book, known):
 
 # ---------------------------------------------------------- notes merging
 
-def parse_notes(text):
+def parse_notes(text, lang="en", keep=""):
     summary = []
     terms = []
     chars = []
@@ -888,12 +1004,25 @@ def parse_notes(text):
                 continue
             f += [""] * (5 - len(f))
             chars.append({"zh": f[0], "en": f[1], "gender": f[2], "note": f[3], "aliases": f[4]})
-    for row in terms + chars:
-        if not has_cjk(row["zh"]):
-            problems.append("The first field must be the Chinese original: " + row["zh"])
-        if has_cjk(row["en"]):
-            problems.append("The English field still contains Chinese: " + row["en"])
-    return " ".join(summary).strip(), terms, chars, problems
+    good_terms, good_chars = [], []
+    for rows, good in ((terms, good_terms), (chars, good_chars)):
+        for row in rows:
+            ok = True
+            if not has_cjk(row["zh"]):
+                problems.append("The first field must be the Chinese original: " + row["zh"])
+                ok = False
+            if lang == "en" and has_cjk(row["en"]):
+                problems.append("The English field still contains Chinese: " + row["en"])
+                ok = False
+            if lang != "en":
+                problem, _ = leftover_chinese(row["en"], lang, keep)
+                if problem:
+                    problems.append("The %s field of %s %s" % (lang_info(lang)["name"], row["zh"],
+                                                              problem))
+                    ok = False
+            if ok or lang == "en":
+                good.append(row)
+    return " ".join(summary).strip(), good_terms, good_chars, problems
 
 
 SLANG_HEADER = ["term", "meaning", "tone", "default_en", "strategy", "avoid"]
@@ -1063,7 +1192,7 @@ def cmd_add(args):
     if not path.exists():
         fail("Notes file not found: " + args.file)
     text = path.read_text(encoding="utf-8")
-    _, terms, chars, problems = parse_notes(text)
+    _, terms, chars, problems = parse_notes(text, book.lang, book.keep_chars())
     slang_rows, slang_problems = parse_slang(text)
     for p in problems + slang_problems:
         out("SKIPPED: " + p)
@@ -1085,8 +1214,30 @@ def read_md_section(path):
     return text.strip()
 
 
-def pick_examples(genre, limit=3):
-    text = read_md_section(SKILL_DIR / "lang" / "en" / "examples.md")
+def lang_text(lang, name):
+    """A text module for the target language. lang/<lang>/<name> wins; English (and any
+    language without its own copy of translation_rules.md / names.md) uses core/."""
+    own = SKILL_DIR / "lang" / lang / name
+    if own.exists():
+        return read_md_section(own)
+    if name in ("translation_rules.md", "names.md"):
+        return read_md_section(SKILL_DIR / "core" / name)
+    return ""
+
+
+def genre_text(lang, genre):
+    """Genre notes: lang/<lang>/genres/<genre>.md, else genres/<genre>.md for English.
+    The English genre notes are not shown for other languages (they give English renderings)."""
+    own = SKILL_DIR / "lang" / lang / "genres" / (genre + ".md")
+    if own.exists():
+        return read_md_section(own)
+    if lang == "en":
+        return read_md_section(SKILL_DIR / "genres" / (genre + ".md"))
+    return "(No %s notes for this genre yet. Follow the rules above.)" % lang_info(lang)["name"]
+
+
+def pick_examples(genre, limit=3, lang="en"):
+    text = read_md_section(SKILL_DIR / "lang" / lang / "examples.md")
     sections = re.split(r"(?m)^## ", text)
     picked_genre = []
     picked_general = []
@@ -1120,7 +1271,7 @@ def examples_block(book, genre):
                      "Calm passages stay calm even if the examples are tense.\n\n"
                      + "\n\n".join(own))
     if len(own) < 3:
-        generic = pick_examples(genre, 3 - len(own))
+        generic = pick_examples(genre, 3 - len(own), book.lang)
         if generic:
             parts.append("General examples (their names are invented - never use them):\n\n"
                          + generic)
@@ -1206,7 +1357,7 @@ def context_block(book, cid):
         for k in range(max(0, len(psrc) - 3), len(psrc)):
             zh = psrc[k]
             en = ptr[k] if k < len(ptr) else ""
-            pairs.append("ZH: " + zh + "\nEN: " + en)
+            pairs.append("ZH: " + zh + "\n" + lang_info(book.lang)["label"] + ": " + en)
         parts.append("End of the previous passage (already translated - continue its voice):\n\n"
                      + "\n\n".join(pairs))
     return "\n\n".join(parts) if parts else "(This is the start of the book.)"
@@ -1243,11 +1394,13 @@ def reference_tables(book, text):
     c_hits = entries_in(text, book.characters(), "aliases")
     # a slang word that only appears inside a glossary name (逆袭 in 逆袭系统) is not slang here
     s_hits = slang_hits(book, text, g_hits + c_hits)
-    gl = md_table(["中文 (found)", "English - use exactly", "type", "note"],
+    gl = md_table(["中文 (found)", book.lname + " - use exactly", "type", "note"],
                   [["/".join(f), r.get("en"), r.get("type"), r.get("note")] for r, f in g_hits])
-    ch = md_table(["中文 (found)", "English", "gender", "note"],
+    ch = md_table(["中文 (found)", book.lname, "gender", "note"],
                   [["/".join(f), r.get("en"), r.get("gender"), r.get("note")] for r, f in c_hits])
-    sl = md_table(["term", "meaning", "tone", "suggested English", "how to handle",
+    suggest = "suggested English" if book.lang == "en" else \
+        "suggested wording (if it is English, use the %s equivalent)" % book.lname
+    sl = md_table(["term", "meaning", "tone", suggest, "how to handle",
                    "never write (literal)"],
                   [[r.get("term") + (" (this book)" if r.get("book") else ""), r.get("meaning"),
                     r.get("tone"), r.get("default_en"), r.get("strategy"), r.get("avoid", "")]
@@ -1260,10 +1413,11 @@ def write_task(book, cid):
     text = passage_text(src)
     gl, ch, sl, n_slang = reference_tables(book, text)
     genre = book.cfg.get("genre", "general")
-    rules = read_md_section(SKILL_DIR / "core" / "translation_rules.md")
-    names = read_md_section(SKILL_DIR / "core" / "names.md")
-    gmod = read_md_section(SKILL_DIR / "genres" / (genre + ".md"))
-    style = read_md_section(SKILL_DIR / "lang" / "en" / "style_guide.md")
+    lang = book.lang
+    rules = lang_text(lang, "translation_rules.md")
+    names = lang_text(lang, "names.md")
+    gmod = genre_text(lang, genre)
+    style = lang_text(lang, "style_guide.md")
     examples = examples_block(book, genre)
     title_note = ("This is the first passage of a chapter: translate the chapter title as [[T]]."
                   if src["part"] == 1 and src.get("title") else
@@ -1273,7 +1427,7 @@ def write_task(book, cid):
 {where} - part {part} of {parts} - {n} paragraphs
 
 ## What to do
-1. Read this whole file once. Then translate the SOURCE TEXT at the bottom into English.
+1. Read this whole file once. Then translate the SOURCE TEXT at the bottom into {lname}.
 2. Write ONLY the translation into `work/current_output.md`. Format: every block starts with the
    same marker as the source ([[T]] for a title, then [[P1]] to [[P{n}]]), one blank line between blocks.
 3. Keep all {n} paragraphs, in the same order. Never merge, split, skip or summarise.
@@ -1302,7 +1456,7 @@ def write_task(book, cid):
 ## Genre notes: {genre}
 {gmod}
 
-## English style
+## {lname} style
 {style}
 
 ## Examples of the target quality
@@ -1317,7 +1471,7 @@ def write_task(book, cid):
            part=src["part"], parts=src["parts"], n=n, cmd=py_cmd(), title_note=title_note,
            gl=gl, ch=ch, n_slang=n_slang, sl=sl, context=context_block(book, cid),
            rules=rules, names=names, genre=genre, gmod=gmod, style=style,
-           examples=examples, source=numbered_source(src))
+           examples=examples, source=numbered_source(src), lname=book.lname)
     book.work.mkdir(exist_ok=True)
     (book.work / "current_task.md").write_text(show_paths(body), encoding="utf-8")
     (book.work / "current_output.md").write_text("", encoding="utf-8")
@@ -1333,7 +1487,7 @@ For each one below, compare DRAFT with ZH as if someone else had written the dra
 
 Check:
 - **Who does what to whom.** Subject and object not swapped (我打了他 ≠ he hit me; 把/被 sentences).
-- **Yes/no and negation.** 确认/取消, 是/否, 不/没/别/未 - is the English saying the same, not the opposite?
+- **Yes/no and negation.** 确认/取消, 是/否, 不/没/别/未 - is the {lname} saying the same, not the opposite?
 - **Numbers, amounts, times, ranks.**
 - **Title prefixes.** 代 = acting, 副 = deputy/vice, 前 = former (秦代掌门 = Acting Sect Leader Qin).
 - **Tone.** Insult stays insult, sarcasm stays sarcastic, humble stays humble.
@@ -1394,15 +1548,15 @@ def write_polish_task(book, cid):
     draft = dict(blocks)
     text = passage_text(src)
     gl, ch, sl, _ = reference_tables(book, text)
-    style = read_md_section(SKILL_DIR / "lang" / "en" / "style_guide.md")
+    style = lang_text(book.lang, "style_guide.md")
     spot = review_mode(book) == "spot"
     pairs = []
     if spot:
         n_paras = len(src["paras"])
         must = [i for i, p in enumerate(src["paras"], 1)
-                if number_mismatch(p, draft.get("P%d" % i, ""))]
+                if number_mismatch(p, draft.get("P%d" % i, ""), book.lang)]
         neg = [i for i, p in enumerate(src["paras"], 1)
-               if negation_mismatch(p, draft.get("P%d" % i, ""))]
+               if negation_mismatch(p, draft.get("P%d" % i, ""), book.lang)]
         must += [i for i, p in enumerate(src["paras"], 1)
                  if literal_slang(book, p, draft.get("P%d" % i, ""))]
         picked = sorted(set(must) | set(neg[:6]) |
@@ -1411,7 +1565,7 @@ def write_polish_task(book, cid):
             pairs.append("[[P%d]]\nZH: %s\nDRAFT: %s" % (i, src["paras"][i - 1],
                                                        draft.get("P%d" % i, "")))
         body = SPOT_REVIEW.format(cid=cid, cmd=py_cmd(), picked=", ".join("P%d" % i for i in picked),
-                                  gl=gl, ch=ch, pairs="\n\n".join(pairs))
+                                  gl=gl, ch=ch, pairs="\n\n".join(pairs), lname=book.lname)
         (book.work / "current_task.md").write_text(show_paths(body), encoding="utf-8")
         return
     if src["part"] == 1 and src.get("title"):
@@ -1420,7 +1574,7 @@ def write_polish_task(book, cid):
         pairs.append("[[P%d]]\nZH: %s\nDRAFT: %s" % (i, p, draft.get("P%d" % i, "")))
     body = """# REVIEW TASK - passage {cid}
 
-Below, every paragraph has the Chinese original (ZH) and a draft English translation (DRAFT).
+Below, every paragraph has the Chinese original (ZH) and a draft {lname} translation (DRAFT).
 Go through them one by one.
 
 ## Step 1 - meaning (the most important part)
@@ -1436,11 +1590,11 @@ For every paragraph, compare DRAFT with ZH and fix any of these:
   河蟹 for 和谐) must not be translated literally: check the slang table. If a sentence reads
   fine but makes no sense in the scene, it is probably a stand-in nobody listed yet: fix it and
   add a SLANG line to your notes.
-- **Jokes and wordplay.** Is the joke still funny in English? If a pun was lost, try to rebuild it
-  with an English word that has the same double meaning. If you can't, keep the meaning.
+- **Jokes and wordplay.** Is the joke still funny in {lname}? If a pun was lost, try to rebuild it
+  with {a_lname} word that has the same double meaning. If you can't, keep the meaning.
 
-## Step 2 - English
-Then make it read like a good English novel: natural rhythm, varied sentences, clear dialogue,
+## Step 2 - {lname}
+Then make it read like a good {lname} novel: natural rhythm, varied sentences, clear dialogue,
 no translationese (see the style table). Keep the author's tone; don't add flourishes.
 
 ## Step 3 - write it
@@ -1458,13 +1612,14 @@ In your notes later, add a FLAG line for any paragraph you are still unsure abou
 ## Slang found
 {sl}
 
-## English style
+## {lname} style
 {style}
 
 ## PARAGRAPHS
 {pairs}
 """.format(cid=cid, n=len(src["paras"]), cmd=py_cmd(), gl=gl, ch=ch, sl=sl, style=style,
-           pairs="\n\n".join(pairs))
+           pairs="\n\n".join(pairs), lname=book.lname,
+           a_lname=("an " if book.lname[0] in "AEIOU" else "a ") + book.lname)
     (book.work / "current_task.md").write_text(show_paths(body), encoding="utf-8")
 
 
@@ -1509,7 +1664,7 @@ def cmd_next(args):
             "from what this chapter used), and ask: should any names or the style change, and "
             "which 2-3 short bits (dialogue, calm narration, action) should become examples? See SKILL.md "
             "step 4: save them with `" + py_cmd() + " pin <passage> <P3-P6> --why \"...\"`, or with "
-            "`--en <file>` when the user (or a second model) edited the English. "
+            "`--en <file>` when the user (or a second model) edited the " + book.lname + ". "
             "Then ask whether to continue. "
             "Only if they say yes: `" + py_cmd() + " set trial false`, then `" + py_cmd() + " next`.")
         return
@@ -1561,6 +1716,11 @@ def run_checks(book, cid):
     src_map = {"T": src.get("title", "")} if "T" in expected else {}
     for i, p in enumerate(src["paras"], 1):
         src_map["P%d" % i] = p
+    lang = book.lang
+    lname = book.lname
+    keep = book.keep_chars() + "".join(r.get("en", "") for r in book.glossary() + book.characters()) \
+        if lang != "en" else ""
+    short_limit, long_limit = LENGTH_LIMITS.get(lang, LENGTH_LIMITS["en"])
     total_zh = 0
     total_en = 0
     for m in expected:
@@ -1571,43 +1731,46 @@ def run_checks(book, cid):
         if not en and zh.strip():
             errors.append("[[%s]] is empty." % m)
             continue
-        found = CJK_RUN_RE.findall(en)
-        if found:
-            errors.append("[[%s]] still contains Chinese: %s" % (m, " ".join(found[:5])))
-        extra_nums = number_mismatch(zh, en)
+        problem, _ = leftover_chinese(en, lang, keep)
+        if problem:
+            errors.append("[[%s]] %s" % (m, problem))
+        elif lang == "ja" and cjk_count(zh) >= 12 and len(en) >= 20 and not KANA_RE.search(en):
+            errors.append("[[%s]] has no kana at all - it looks like it is still Chinese. "
+                          "Translate it into Japanese." % m)
+        extra_nums = number_mismatch(zh, en, lang)
         for term, word in literal_slang(book, zh, en):
-            warnings.append("Slang check: [[%s]] has %s, a slang/stand-in word, and the English "
+            warnings.append("Slang check: [[%s]] has %s, a slang/stand-in word, and the %s "
                             "says '%s' - is that a word-for-word translation? See the slang table "
                             "in the task file. (Fine if it really is meant literally here.)"
-                            % (m, term, word))
+                            % (m, term, lname, word))
         if extra_nums:
-            warnings.append("Number check: [[%s]] says %s in English, but the Chinese has no such "
-                            "number. Check it against the original; if the English is right, keep it." % (
-                                m, ", ".join(str(v) for v in extra_nums)))
+            warnings.append("Number check: [[%s]] says %s in %s, but the Chinese has no such "
+                            "number. Check it against the original; if the %s is right, keep it." % (
+                                m, ", ".join(str(v) for v in extra_nums), lname, lname))
         zc = cjk_count(zh)
-        wc = word_count(en)
+        wc = text_size(en, lang)
         if m != "T":
             total_zh += zc
             total_en += wc
         if zc >= 30:
             ratio = wc / float(zc)
-            if ratio < 0.25:
+            if ratio < short_limit:
                 warnings.append("[[%s]] is much shorter than the original - check nothing "
                                 "was left out." % m)
-            elif ratio > 1.7:
+            elif ratio > long_limit:
                 warnings.append("[[%s]] is much longer than the original - check nothing "
                                 "was added." % m)
         low = en.lower()
-        for ph in NOTE_PHRASES:
+        for ph in (JA_NOTE_PHRASES if lang == "ja" else NOTE_PHRASES):
             if ph in low:
                 warnings.append("[[%s]] contains a note ('%s'). Notes are not allowed in the "
                                 "text; put the meaning into the sentence." % (m, ph))
                 break
-    if total_zh >= 200 and total_en / float(total_zh) < 0.25:
+    if total_zh >= 200 and total_en / float(total_zh) < short_limit:
         errors.append("The whole passage is far too short for the original. It looks "
                       "summarised. Translate every sentence.")
     first = blocks[0][1].lower() if blocks else ""
-    for ph in META_PHRASES:
+    for ph in (JA_META_PHRASES if lang == "ja" else META_PHRASES):
         if first.startswith(ph):
             errors.append("Remove the commentary at the start ('%s...')." % ph)
             break
@@ -1624,7 +1787,7 @@ def run_checks(book, cid):
         if not any(o in full_en for o in options):
             warnings.append("Name check: %s should appear as '%s' (fine if you used he/she or "
                             "another form on purpose)." % ("/".join(f), en))
-    for pattern, min_hits, advice in STYLE_LINT:
+    for pattern, min_hits, advice in (STYLE_LINT if lang == "en" else []):
         where = [m for m, t in blocks if re.search(pattern, t, re.I)]
         total = sum(len(re.findall(pattern, t, re.I)) for _, t in blocks)
         if total >= min_hits:
@@ -1654,11 +1817,15 @@ def cmd_check(args):
     if warnings:
         out("Look at the warnings. Fix real mistakes in work/current_output.md; ignore the rest. "
             "Never make a correct sentence worse just to silence a warning.")
+    ln = book.lname
+    pad = " " * max(0, 7 - len(ln))
     notes_hint = ("write work/current_notes.md with:\n"
                   "  SUMMARY: one or two English sentences about what happened in this passage\n"
-                  "  TERM: 中文 | English | type | note     (one line per NEW name/term you translated)\n"
-                  "  CHAR: 中文 | English | gender | note    (one line per NEW character)\n"
-                  "  SLANG: 中文 | meaning | tone | English | how to handle | literal words to avoid\n"
+                  "  TERM: 中文 | " + ln + " | type | note     " + pad +
+                  "(one line per NEW name/term you translated)\n"
+                  "  CHAR: 中文 | " + ln + " | gender | note    " + pad + "(one line per NEW character)\n"
+                  "  SLANG: 中文 | meaning | tone | " + ln +
+                  " | how to handle | literal words to avoid\n"
                   "         (one line per NEW slang word, in-joke or stand-in word this book uses "
                   "again and again)\n"
                   "  FLAG: P10 | why a human should check it  (a pun you could not keep, a line "
@@ -1700,7 +1867,7 @@ def cmd_accept(args):
              "Run `" + py_cmd() + " check` and fix the errors.")
     notes_path = book.work / "current_notes.md"
     notes = notes_path.read_text(encoding="utf-8") if notes_path.exists() else ""
-    summary, terms, chars, problems = parse_notes(notes)
+    summary, terms, chars, problems = parse_notes(notes, book.lang, book.keep_chars())
     if not summary:
         fail("work/current_notes.md needs a SUMMARY: line (one or two sentences about this "
              "passage). It keeps later passages consistent.",
@@ -1769,6 +1936,7 @@ def cmd_status(args):
     out("Genre: %s   Trial mode: %s   Review pass: %s" % (
         book.cfg.get("genre"), "on" if book.cfg.get("trial") else "off",
         review_mode(book)))
+    out("Translating into: %s (%s)" % (book.lname, book.lang))
     out("Passages done: %d / %d" % (len(done), len(ids)))
     live = [ch for ch in book.cfg["chapters"] if not ch.get("skip")]
     full = sum(1 for ch in live if all(c in done for c in ch["chunks"]))
@@ -1808,6 +1976,18 @@ def cmd_set(args):
         val = val.lower()
         if val not in ("off", "spot", "full"):
             fail("Use off, spot or full.")
+    elif kind == "lang":
+        val = val.lower()
+        if val not in LANGS:
+            fail("Unknown target language. Use one of: " + ", ".join(LANGS))
+        if book.done() or book.cfg.get("current") or len(book.glossary()) or len(book.characters()):
+            fail("The target language can only be changed before anything is translated or "
+                 "named. To translate this book into another language, set it up again with "
+                 "`" + py_cmd() + " init <book> --lang " + val + " --name <new-folder-name>`.")
+        key = "target_lang"
+    if key == "keep_chars":  # adds characters; "none" clears the list
+        val = "" if val.strip().lower() in ("none", "-") else \
+            "".join(sorted(set(CJK_RE.findall(book.keep_chars() + val))))
     if key == "genre" and val not in GENRES:
         fail("Unknown genre. Use one of: " + ", ".join(GENRES))
     if key == "chunk_chars":
@@ -1856,8 +2036,12 @@ def cmd_pin(args):
         else:
             fail("The --en file must have one [[P..]] line for each paragraph P%d-P%d." % (a, b))
         for k in ("P%d" % i for i in range(a, b + 1)):
-            if has_cjk(tr[k]):
+            if book.lang == "en" and has_cjk(tr[k]):
                 fail("The edited English for %s still contains Chinese." % k)
+            if book.lang != "en":
+                problem, _ = leftover_chinese(tr[k], book.lang, book.keep_chars())
+                if problem:
+                    fail("The edited %s for %s %s" % (book.lname, k, problem))
     zh_lines = []
     en_lines = []
     for i in range(a, b + 1):
@@ -1893,8 +2077,12 @@ def cmd_rename(args):
     book = workspace_from_args(args)
     zh = args.zh.strip()
     new_en = args.english.strip()
-    if has_cjk(new_en) or not new_en:
+    if book.lang == "en" and (has_cjk(new_en) or not new_en):
         fail("The new English must not contain Chinese.")
+    if book.lang != "en":
+        problem, _ = leftover_chinese(new_en, book.lang, book.keep_chars())
+        if problem or not new_en:
+            fail("The new %s %s" % (book.lname, problem or "is empty."))
     found = None
     for fname, rows, header, alias in (
             ("glossary.tsv", book.glossary(), ["zh", "en", "type", "note"], None),
@@ -2090,6 +2278,26 @@ Then run: `{cmd} scan-apply`
 """
 
 
+def scan_task_ja(body):
+    """The scan task for a Japanese book: suggestions and words to avoid are Japanese."""
+    swaps = [
+        ('("the oregano on his arm")', '(「腕にオレガノが」)'),
+        ("it needs\n  crude English, not a literal one.", "it needs\n  crude Japanese, not a literal one."),
+        ("tone | suggested English | how to handle | literal English to avoid (comma-separated)",
+         "tone | suggested Japanese | how to handle | literal Japanese to avoid (comma-separated)"),
+        ("tone | suggested English | how to handle | literal English to avoid\n",
+         "tone | suggested Japanese | how to handle | literal Japanese to avoid\n"),
+        ("Write the English parts in English.",
+         "Write the meaning and notes in English or Chinese, the suggested wording and the words "
+         "to avoid in Japanese."),
+        ("| deadpan, crude | his johnson | same English every time | oregano",
+         "| deadpan, crude | ムスコ | same word every time | オレガノ"),
+    ]
+    for a, b in swaps:
+        body = body.replace(a, b)
+    return body
+
+
 def cmd_scan(args):
     book = workspace_from_args(args)
     paras = book_paragraphs(book)
@@ -2125,6 +2333,8 @@ def cmd_scan(args):
         lines += ["- E%d (%s): %s" % (j, lab, t) for j, (lab, t) in enumerate(ex, 1)]
         blocks.append("\n".join(lines))
     body = SCAN_TASK.format(n=len(cands), cmd=py_cmd(), words="\n\n".join(blocks))
+    if book.lang == "ja":
+        body = scan_task_ja(body)
     book.work.mkdir(exist_ok=True)
     (book.work / "scan_task.md").write_text(show_paths(body), encoding="utf-8")
     (book.work / "scan_result.md").write_text("", encoding="utf-8")
@@ -2159,9 +2369,11 @@ def cmd_scan_apply(args):
         if kind not in ("stand-in", "vulgar", "literal", "unsure") or conf not in ("high", "low"):
             problems.append("Use stand-in/vulgar/literal/unsure and high/low: " + line)
             continue
-        if kind in ("stand-in", "vulgar") and (len(f) < 6 or not f[5] or has_cjk(f[5])):
-            problems.append("A " + kind + " line needs: meaning | tone | English suggestion | how "
-                            "to handle | literal words to avoid: " + line)
+        bad_word = (has_cjk(f[5]) if book.lang == "en" else
+                    bool(leftover_chinese(f[5], book.lang, book.keep_chars())[0])) if len(f) > 5 else True
+        if kind in ("stand-in", "vulgar") and (len(f) < 6 or not f[5] or bad_word):
+            problems.append("A " + kind + " line needs: meaning | tone | " + book.lname +
+                            " suggestion | how to handle | literal words to avoid: " + line)
             continue
         verdicts[term] = f
     missing = [w for w in words if w not in verdicts]
@@ -2292,8 +2504,8 @@ def collect_chapters(book):
                     paras.append(t)
         if paras:
             if ch.get("front"):
-                title = title or "Title Page"
-            chapters.append({"n": ch["n"], "title": title or "Chapter %d" % ch["n"],
+                title = title or book_words(book)["front"]
+            chapters.append({"n": ch["n"], "title": title or book_words(book)["chapter"] % ch["n"],
                              "paras": paras, "complete": complete,
                              "front": bool(ch.get("front"))})
         if not complete:
@@ -2305,6 +2517,32 @@ NOTICE = ("Unofficial AI-assisted translation made for the reader's own private 
           "All rights belong to the original author. Please do not share or publish it, "
           "and support the author through official releases where available.")
 
+# Words the finished book shows to the reader, per target language.
+BOOK_WORDS = {
+    "en": {"notice": NOTICE, "chapter": "Chapter %d", "front": "Title Page",
+           "contents": "Contents", "unfinished": "(translation of this chapter is not finished yet)",
+           "author": "Unknown",
+           "font": "font-family:Georgia,'Times New Roman',serif;",
+           "head_font": "font-family:Helvetica,Arial,sans-serif;"},
+    "ja": {"notice": "読者個人で楽しむために作られた、非公式のAI翻訳です。著作権はすべて原作者に"
+                     "帰属します。共有・公開はしないでください。正規版がある場合は、そちらで作者を"
+                     "応援してください。",
+           "chapter": "第%d章", "front": "扉", "contents": "目次",
+           "unfinished": "（この章の翻訳はまだ終わっていません）", "author": "不明",
+           "font": "font-family:'Hiragino Mincho ProN','Yu Mincho','Noto Serif JP',serif;",
+           "head_font": "font-family:'Hiragino Kaku Gothic ProN','Yu Gothic','Noto Sans JP',sans-serif;"},
+}
+
+
+def book_words(book):
+    return BOOK_WORDS.get(book.lang, BOOK_WORDS["en"])
+
+
+def book_css(book):
+    w = book_words(book)
+    return CSS.replace("font-family:Georgia,'Times New Roman',serif;", w["font"]) \
+              .replace("font-family:Helvetica,Arial,sans-serif;", w["head_font"])
+
 
 def esc(s):
     return html.escape(s, quote=True)
@@ -2312,13 +2550,14 @@ def esc(s):
 
 def build_md(book, chapters, path):
     title = book.cfg.get("title_en") or book.cfg["title"]
-    lines = ["# " + title, "", "_" + NOTICE + "_", ""]
+    w = book_words(book)
+    lines = ["# " + title, "", "_" + w["notice"] + "_", ""]
     for ch in chapters:
         lines += ["", "## " + ch["title"], ""]
         for p in ch["paras"]:
             lines += [p, ""]
         if not ch["complete"]:
-            lines += ["_(translation of this chapter is not finished yet)_", ""]
+            lines += ["_" + w["unfinished"] + "_", ""]
     path.write_text("\n".join(lines), encoding="utf-8")
 
 
@@ -2331,10 +2570,11 @@ p{margin:0 0 .9em 0;text-indent:0;}
 
 def build_html(book, chapters, path):
     title = book.cfg.get("title_en") or book.cfg["title"]
-    parts = ["<!doctype html><html lang='en'><head><meta charset='utf-8'>",
+    w = book_words(book)
+    parts = ["<!doctype html><html lang='%s'><head><meta charset='utf-8'>" % book.lang,
              "<meta name='viewport' content='width=device-width,initial-scale=1'>",
-             "<title>%s</title><style>%s</style></head><body>" % (esc(title), CSS),
-             "<h1>%s</h1><p class='notice'>%s</p>" % (esc(title), esc(NOTICE)), "<nav><ol>"]
+             "<title>%s</title><style>%s</style></head><body>" % (esc(title), book_css(book)),
+             "<h1>%s</h1><p class='notice'>%s</p>" % (esc(title), esc(w["notice"])), "<nav><ol>"]
     for ch in chapters:
         parts.append("<li><a href='#c%d'>%s</a></li>" % (ch["n"], esc(ch["title"])))
     parts.append("</ol></nav>")
@@ -2343,39 +2583,41 @@ def build_html(book, chapters, path):
         for p in ch["paras"]:
             parts.append("<p>%s</p>" % esc(p))
         if not ch["complete"]:
-            parts.append("<p><em>(translation of this chapter is not finished yet)</em></p>")
+            parts.append("<p><em>%s</em></p>" % esc(w["unfinished"]))
     parts.append("</body></html>")
     path.write_text("\n".join(parts), encoding="utf-8")
 
 
 def build_epub(book, chapters, path):
     title = book.cfg.get("title_en") or book.cfg["title"]
-    author = book.cfg.get("author_en") or "Unknown"
+    w = book_words(book)
+    lang = book.lang
+    author = book.cfg.get("author_en") or w["author"]
     book_id = "urn:uuid:" + str(uuid.uuid5(uuid.NAMESPACE_URL, book.cfg["source_file"]))
     modified = datetime.datetime.now(datetime.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
 
     def xhtml(t, body):
         return ("<?xml version='1.0' encoding='utf-8'?>\n<!DOCTYPE html>\n"
                 "<html xmlns='http://www.w3.org/1999/xhtml' xmlns:epub='http://www.idpf.org/2007/ops' "
-                "lang='en' xml:lang='en'><head><meta charset='utf-8'/><title>%s</title>"
+                "lang='%s' xml:lang='%s'><head><meta charset='utf-8'/><title>%s</title>"
                 "<link rel='stylesheet' type='text/css' href='style.css'/></head><body>%s</body></html>"
-                % (esc(t), body))
+                % (lang, lang, esc(t), body))
 
     files = {}
-    files["OEBPS/style.css"] = CSS
+    files["OEBPS/style.css"] = book_css(book)
     files["OEBPS/title.xhtml"] = xhtml(title, "<h1>%s</h1><p class='notice'>%s</p>"
-                                       % (esc(title), esc(NOTICE)))
+                                       % (esc(title), esc(w["notice"])))
     for ch in chapters:
         body = "<h2>%s</h2>" % esc(ch["title"])
         body += "".join("<p>%s</p>" % esc(p) for p in ch["paras"])
         if not ch["complete"]:
-            body += "<p><em>(translation of this chapter is not finished yet)</em></p>"
+            body += "<p><em>%s</em></p>" % esc(w["unfinished"])
         files["OEBPS/c%04d.xhtml" % ch["n"]] = xhtml(ch["title"], body)
-    nav = "<nav epub:type='toc' id='toc'><h1>Contents</h1><ol>"
+    nav = "<nav epub:type='toc' id='toc'><h1>%s</h1><ol>" % esc(w["contents"])
     nav += "".join("<li><a href='c%04d.xhtml'>%s</a></li>" % (ch["n"], esc(ch["title"]))
                    for ch in chapters)
     nav += "</ol></nav>"
-    files["OEBPS/nav.xhtml"] = xhtml("Contents", nav)
+    files["OEBPS/nav.xhtml"] = xhtml(w["contents"], nav)
     ncx = ["<?xml version='1.0' encoding='utf-8'?>",
            "<ncx xmlns='http://www.daisy.org/z3986/2005/ncx/' version='2005-1'><head>",
            "<meta name='dtb:uid' content='%s'/></head><docTitle><text>%s</text></docTitle><navMap>"
@@ -2399,10 +2641,10 @@ def build_epub(book, chapters, path):
         "<package xmlns='http://www.idpf.org/2007/opf' version='3.0' unique-identifier='bookid'>"
         "<metadata xmlns:dc='http://purl.org/dc/elements/1.1/'>"
         "<dc:identifier id='bookid'>%s</dc:identifier><dc:title>%s</dc:title>"
-        "<dc:creator>%s</dc:creator><dc:language>en</dc:language>"
+        "<dc:creator>%s</dc:creator><dc:language>%s</dc:language>"
         "<meta property='dcterms:modified'>%s</meta></metadata>"
         "<manifest>%s</manifest><spine toc='ncx'>%s</spine></package>"
-        % (book_id, esc(title), esc(author), modified, "".join(manifest), "".join(spine)))
+        % (book_id, esc(title), esc(author), lang, modified, "".join(manifest), "".join(spine)))
     container = ("<?xml version='1.0' encoding='utf-8'?>\n"
                  "<container version='1.0' xmlns='urn:oasis:names:tc:opendocument:xmlns:container'>"
                  "<rootfiles><rootfile full-path='OEBPS/content.opf' "
@@ -2421,7 +2663,7 @@ def cmd_build(args):
     if not chapters:
         fail("Nothing is translated yet.", "Run `" + py_cmd() + " next`.")
     formats = [f.strip() for f in args.formats.split(",") if f.strip()]
-    stem = slugify(book.ws.name) + "-en"
+    stem = slugify(book.ws.name) + "-" + book.lang
     outdir = book.ws / "output"
     outdir.mkdir(exist_ok=True)
     made = []
@@ -2458,6 +2700,7 @@ def main():
     p = sub.add_parser("init", help="set up a book (.txt or .epub)")
     p.add_argument("book")
     p.add_argument("--genre", default="general", help="general | xianxia | urban | historical")
+    p.add_argument("--lang", default="en", help="target language: en (English, default) | ja (Japanese)")
     p.add_argument("--chunk-chars", type=int, default=1500,
                    help="Chinese characters per passage (default 1500)")
     p.add_argument("--name", help="short folder name for this book")

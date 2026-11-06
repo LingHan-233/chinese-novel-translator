@@ -1,9 +1,9 @@
 ---
 name: chinese-novel-translator
-description: Translate a Chinese novel or web novel (.txt or .epub) into readable English, passage by passage, keeping names consistent, keeping the author's voice and paragraph rhythm, and handling idioms, forms of address and Chinese internet slang. Use this whenever the user wants to read, translate or convert a Chinese novel, web novel (网文/网络小说), xianxia, wuxia, cultivation, system or urban novel into English, even if they only say "translate this book" or drop a Chinese .txt/.epub file. Works with cheap, fast models because a helper script does all the bookkeeping.
+description: Translate a Chinese novel or web novel (.txt or .epub) into readable English (or Japanese), passage by passage, keeping names consistent, keeping the author's voice and paragraph rhythm, and handling idioms, forms of address and Chinese internet slang. Use this whenever the user wants to read, translate or convert a Chinese novel, web novel (网文/网络小说), xianxia, wuxia, cultivation, system or urban novel into English or Japanese, even if they only say "translate this book" or drop a Chinese .txt/.epub file. Works with cheap, fast models because a helper script does all the bookkeeping.
 ---
 
-# Chinese Novel Translator (Chinese → English)
+# Chinese Novel Translator (Chinese → English / Japanese)
 
 You translate a whole Chinese novel for the user, one short passage at a time.
 A helper script (`scripts/novel.py`, Python 3.8+, no installs) does everything except the
@@ -29,6 +29,9 @@ On Windows, use `py` if `python` does not work.
 ## Step 0 — Before you start (talk to the user)
 
 - Get the book file (.txt or .epub). If they only gave a name, ask for the file.
+- Target language: English (default) or Japanese. If the user did not say, and nothing
+  suggests Japanese, use English. Japanese support is new: tell a Japanese user it is still
+  being tested.
 - Pick a genre module from the content (ask only if unclear):
   `xianxia` (cultivation, wuxia, sects, immortals), `urban` (modern city, system, CEO,
   campus, gaming, apocalypse), `historical` (court, officialdom, palace, ancient settings),
@@ -40,8 +43,15 @@ On Windows, use `py` if `python` does not work.
 ## Step 1 — Set up
 
 ```
-novel.py init "<path to book>" --genre <general|xianxia|urban|historical>
+novel.py init "<path to book>" --genre <general|xianxia|urban|historical> [--lang ja]
 ```
+
+`--lang ja` translates into Japanese. **For a Japanese book, read "English" in this file as
+"Japanese"**: TERM/CHAR/SLANG lines and examples hold Japanese; only SUMMARY lines stay in
+English. Names keep their kanji in Japanese form (苏晴 → 蘇晴); the task file explains how.
+The check rejects characters Japanese does not use (剑, 们, 这) and paragraphs without any kana.
+If a person's name really has a character with no Japanese form, allow it with
+`novel.py set keep_chars 玥` (only for names).
 
 Check the printed chapter list. Tables of contents are left out automatically, and anything
 before the first real chapter (书名, 简介, 版权...) is marked as front matter. If something that
@@ -196,7 +206,9 @@ Give the user the files. You can build at any time to show progress.
 | `novel.py flags` | list the places marked for a human to check |
 | `novel.py skip 2` / `unskip 2` | leave a chapter out of the translation (or put it back) |
 | `novel.py set genre historical` | switch genre module |
-| `novel.py set title_en "..."` / `set author_en "..."` | title and author in the built book |
+| `novel.py set title_en "..."` / `set author_en "..."` | title and author in the built book (in the target language) |
+| `novel.py set lang ja` | change the target language (only before anything is translated or named) |
+| `novel.py set keep_chars 玥` | Japanese books: allow a name character that Japanese does not use (`none` clears the list) |
 | `novel.py redo 12` | translate passage 0012 again |
 | `novel.py next --force` | rebuild the open task file (after you changed the bible) |
 | `novel.py init ... --chunk-chars 800 --force` | start over with smaller passages (deletes progress) — use if the model keeps skipping sentences |

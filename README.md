@@ -1,10 +1,12 @@
-# Chinese Novel Translator (v0.8.1)
+# Chinese Novel Translator (v0.9.0)
 
 Read Chinese web novels in English with your own AI agent.
 
 Give your agent a Chinese novel (`.txt` or `.epub`). It translates the book passage by passage and hands you back an `.epub`, `.html` and `.md` you can read anywhere. Names stay consistent from chapter 1 to chapter 1000, the author's voice and paragraph rhythm are kept, and idioms, forms of address and internet slang are translated by what they mean instead of word by word.
 
 [中文说明](README.zh-CN.md)
+
+**New in v0.9.0 (testing):** translate into Japanese instead, with `init ... --lang ja`. Names and genre terms keep their kanji in Japanese form; the checks catch leftover Chinese characters. English is still the default and works exactly as before.
 
 ## Why it works with cheap models
 
