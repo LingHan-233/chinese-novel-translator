@@ -88,7 +88,7 @@ init, candidates, scan, scan-apply, add, next, check, review(=polish), accept, s
 - 复核是同一个模型查自己，和初稿错在同一处时查不出来。
 - 每个新梗第一次出现时仍然要靠模型或人看出来（scan 只覆盖建书时能扫到的候选）。
 - `scan` 测试时 agent 知道自己在被测误判，正常使用时可能没那么谨慎。
-- README 的"目前的测试结果"一节还停在 v0.6 的数据，可以补上 scan 的结果和 2026-11-07 的对比、成本数据（宣传口径见《测试总结_2026-11-07》第四节）。
+- README 的"目前的测试结果"和"费用"两节已按 2026-11-07 的对比和真书数据更新（中英两版）；scan 的测试结果还没写进去。
 - 单章翻译质量和同类工具差不多（对比测试第 3），优势在长篇一致性和自动纠错，但**长篇对比（20 章以上）还没做**。
 - 术语检查只看译名在不在本 passage 里，不管用法对不对；英文单复数只做了加/去 s、es 的简单规则。
 - **日语版用真模型测过三轮（v0.9.0–0.9.3，共约 25 个 passage）**：
@@ -108,7 +108,7 @@ init, candidates, scan, scan-apply, add, next, check, review(=polish), accept, s
 ## 7. 发布流程
 
 - Claude 的 GitHub App 已对该仓库授权，可以直接 `git push origin main`。提交署名用 `LingHan-233 <LingHan-233@users.noreply.github.com>`。
-- 推送 tag 时经常被代理断开，所以 **Release 和 tag 由维护者在 GitHub 网页上创建**（Releases → Draft a new release → 输入新 tag → Publish）。目前只建了 v0.6.1 的 Release。
+- 推送 tag 时经常被代理断开，所以 **Release 和 tag 由维护者在 GitHub 网页上创建**（Releases → Draft a new release → 输入新 tag → Publish）。开发会话**无权**通过 API 创建 Release（2026-11-07 试过，返回 403），发布说明由开发方写好交给维护者粘贴。目前只建了 v0.6.1 的 Release。
 - 每次发版：改 `VERSION`、`novel.py` 里的 `VERSION`、README 标题里的版本号；跑 `python -m unittest tests/test_checks.py`，并用 `tests/workflow_run.py` 和上一版对比；提交说明写清改了什么和 diff 结果；另外打一个 zip 发给维护者（解压后就是仓库内容，不含 `.git`）。
 - 维护者本机：skill 目录 `~\.workbuddy\skills\chinese-novel-translator` 和 NEXT 里打印的缓存目录 `E:\WorkBuddy-Data\cache\skills\chinese-novel-translator` 是**同一份物理目录**（v0.9.5 复测时确认），替换一次即可。
 
