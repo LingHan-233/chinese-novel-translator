@@ -27,7 +27,7 @@ from html.parser import HTMLParser
 from pathlib import Path
 import xml.etree.ElementTree as ET
 
-VERSION = "0.9.4"
+VERSION = "0.9.5"
 SKILL_DIR = Path(__file__).resolve().parent.parent
 HOME_NAME = "novel-translations"
 
@@ -63,6 +63,8 @@ NOTE_PHRASES = ["translator's note", "translator’s note", "tl note", "tl:", "(
 # English habits that cheap models carry over from Chinese. Warnings only.
 # (pattern, how many hits before warning, advice)
 STYLE_LINT = [
+    (r"blue in the face", 1, "'blue in the face' means exasperated / worn out from repeating "
+     "yourself, not sad - if the Chinese is about feeling hurt or wanting to cry, use another phrase"),
     (r"\bcould(n't| not) help but\b", 1, "'couldn't help but' - usually drop it or say it plainly"),
     (r"\ba (trace|hint|sliver|touch) of\b", 2, "'a trace/hint of' repeated - say it directly"),
     (r"\bcorners? of (his|her|their|my) (mouth|lips)\b", 1, "'the corner of his mouth' - try 'a smile tugged at...' or just 'he smiled'"),
@@ -199,20 +201,29 @@ def en_numbers(text):
             vals.add(int(float(m.group(0).replace(",", ""))))
         except ValueError:
             pass
-    words = re.findall(r"[a-z]+", text.lower().replace("-", " "))
+    # Only tens-units is one number word with a hyphen (twenty-one, twenty-first); any other dash,
+    # hyphen or punctuation ends a number, so "one hundred—one hundred fifty" is 100 and 150.
+    low = re.sub(r"\b([a-z]+)-([a-z]+)\b",
+                 lambda m: m.group(1) + " " + m.group(2)
+                 if m.group(1) in EN_TENS and (m.group(2) in EN_UNITS or m.group(2) in EN_ORD)
+                 else m.group(1) + " , " + m.group(2), text.lower())
+    for part in re.split(r"[^a-z\s]+", low):
+        _en_words(part.split(), vals)
+    return vals
+
+
+def _en_words(words, vals):
+    """Read the number phrases in one stretch of words (no punctuation inside) into vals."""
     total, current, active = 0, 0, False
 
     def flush():
         if active:
             vals.add(total + current)
 
-    skip_next = [False]
+    skip_until = [0]
     for i, w in enumerate(words):
         nxt_w = words[i + 1] if i + 1 < len(words) else ""
-        if skip_next[0]:
-            skip_next[0] = False
-            if w in ("a",) and nxt_w in EN_SCALE:
-                skip_next[0] = True
+        if i < skip_until[0]:
             continue
         if w in EN_UNITS or w in EN_TENS:
             current += EN_UNITS.get(w, 0) + EN_TENS.get(w, 0)
@@ -229,10 +240,16 @@ def en_numbers(text):
                 total += (current or 1) * EN_SCALE[w]
                 current = 0
             active = True
-        elif w == "in" and nxt_w in ("ten", "a", "hundred", "thousand", "million") and active:
-            flush()  # "eight in ten", "one in a hundred": a ratio, the second number is not a quantity
+        elif w == "in" and active and (nxt_w == "a" or nxt_w in EN_UNITS or nxt_w in EN_TENS
+                                       or nxt_w in EN_SCALE):
+            # "eight in ten", "one in a hundred thousand": a ratio. Skip the whole second number.
+            flush()
             total, current, active = 0, 0, False
-            skip_next[0] = True
+            j = i + 1
+            while j < len(words) and (words[j] in ("a", "and") or words[j] in EN_UNITS or
+                                      words[j] in EN_TENS or words[j] in EN_SCALE):
+                j += 1
+            skip_until[0] = j
             continue
         elif w == "a" and nxt_w in EN_SCALE:
             current, active = 1, True
@@ -242,7 +259,6 @@ def en_numbers(text):
             flush()
             total, current, active = 0, 0, False
     flush()
-    return vals
 
 
 ZH_NEG_RE = re.compile(r"[不没未别无非莫勿]")
@@ -888,8 +904,11 @@ def cmd_init(args):
     if len(chapters) == 1 and total_chars > 20000:
         out("WARNING: only one chapter was found in a long text. Chapter headings may use an "
             "unusual format; the book will still work, but chapter titles will be missing.")
+    lname = lang_info(args.lang)["name"]
     nxt("Build the story bible (SKILL.md step 2): run `" + py_cmd() + " candidates` and read "
-        "the beginning of the book.")
+        "the beginning of the book. Also translate the book's title into " + lname + " and run `" +
+        py_cmd() + " set title_en \"...\"`" + (" (the Japanese title goes in title_en too)"
+                                                 if args.lang == "ja" else "") + ".")
 
 
 # ------------------------------------------------------------- candidates
@@ -1616,7 +1635,7 @@ Then run: `{cmd} check`
 ## Characters
 {ch}
 
-## PARAGRAPHS TO CHECK
+{own_slang}## PARAGRAPHS TO CHECK
 {pairs}
 """
 
@@ -1660,6 +1679,26 @@ def risky_paragraphs(paras, limit):
     return sorted(i for _, _, i in scored[:limit])
 
 
+def own_slang_check(book, text):
+    """Review block for slang lines this book registered itself (bible/slang_extra.tsv). A model
+    wrote them, so a wrong reading would otherwise be repeated all book long. Returns
+    (block text or "", the terms found)."""
+    g_hits = entries_in(text, book.glossary()) + entries_in(text, book.characters(), "aliases")
+    own = [r for r, _ in slang_hits(book, text, g_hits) if r.get("book")]
+    if not own:
+        return "", []
+    table = md_table(["中文", "registered meaning", "registered " + book.lname],
+                     [[r.get("term"), r.get("meaning"), r.get("default_en")] for r in own])
+    return ("## This book's own slang entries - are they right here?\n"
+            "These were registered for this book by a model, not taken from the shared table, so "
+            "they can be wrong.\nFor each one, first decide from this passage's context what the "
+            "word means here. If that does not\nfit the registered meaning, translate it by the "
+            "context and add a line to your notes:\n"
+            "`FLAG: P7 | <word> here means ..., not the registered ... - check bible/slang_extra.tsv`\n"
+            "so a person can decide whether to change the entry. If it fits, change nothing.\n"
+            + table + "\n\n"), [r.get("term") for r in own]
+
+
 def write_polish_task(book, cid):
     src = book.source(cid)
     draft_text = (book.work / "current_output.md").read_text(encoding="utf-8")
@@ -1668,6 +1707,7 @@ def write_polish_task(book, cid):
     draft = dict(blocks)
     text = passage_text(src)
     gl, ch, sl, _ = reference_tables(book, text)
+    own_slang, own_terms = own_slang_check(book, text)
     style = lang_text(book.lang, "style_guide.md")
     spot = review_mode(book) == "spot"
     pairs = []
@@ -1679,6 +1719,7 @@ def write_polish_task(book, cid):
                if negation_mismatch(p, draft.get("P%d" % i, ""), book.lang)]
         must += [i for i, p in enumerate(src["paras"], 1)
                  if literal_slang(book, p, draft.get("P%d" % i, ""))]
+        must += [i for i, p in enumerate(src["paras"], 1) if any(t in p for t in own_terms)]
         picked = sorted(set(must) | set(neg[:6]) |
                         set(risky_paragraphs(src["paras"], min(6, max(2, n_paras // 4)))))
         for i in picked:
@@ -1686,7 +1727,8 @@ def write_polish_task(book, cid):
                                                        draft.get("P%d" % i, "")))
         body = SPOT_REVIEW.format(cid=cid, cmd=py_cmd(), picked=", ".join("P%d" % i for i in picked),
                                   gl=gl, ch=ch, pairs="\n\n".join(pairs), lname=book.lname,
-                                  extra_checks=REVIEW_EXTRA.get(book.lang, ""))
+                                  extra_checks=REVIEW_EXTRA.get(book.lang, ""),
+                                  own_slang=own_slang)
         (book.work / "current_task.md").write_text(show_paths(body), encoding="utf-8")
         return
     if src["part"] == 1 and src.get("title"):
@@ -1733,7 +1775,7 @@ In your notes later, add a FLAG line for any paragraph you are still unsure abou
 ## Slang found
 {sl}
 
-## {lname} style
+{own_slang}## {lname} style
 {style}
 
 ## PARAGRAPHS
@@ -1741,7 +1783,7 @@ In your notes later, add a FLAG line for any paragraph you are still unsure abou
 """.format(cid=cid, n=len(src["paras"]), cmd=py_cmd(), gl=gl, ch=ch, sl=sl, style=style,
            pairs="\n\n".join(pairs), lname=book.lname,
            a_lname=("an " if book.lname[0] in "AEIOU" else "a ") + book.lname,
-           extra_checks=REVIEW_EXTRA.get(book.lang, ""))
+           extra_checks=REVIEW_EXTRA.get(book.lang, ""), own_slang=own_slang)
     (book.work / "current_task.md").write_text(show_paths(body), encoding="utf-8")
 
 
@@ -1804,6 +1846,28 @@ def cmd_next(args):
     out("Task file: " + str(book.work / "current_task.md"))
     nxt("Read work/current_task.md and follow it: write the translation to "
         "work/current_output.md, then run `" + py_cmd() + " check`.")
+
+
+def name_used(option, text, lang="en"):
+    """Is a glossary/character name in the translation? English ignores a leading the/a/an and
+    accepts each word with or without a plural s/es ('the Antiquity Pavilion' matches 'an Antiquity
+    Pavilion member', 'formations' matches 'The formation')."""
+    if option in text or lang != "en":  # the old plain test still counts (Dao in Daoist)
+        return option in text
+    words = option.split()
+    if len(words) > 1 and words[0] in ("the", "a", "an"):
+        words = words[1:]
+    if not words:
+        return option in text
+    parts = []
+    for w in words:
+        forms = {w, w + "s", w + "es"}
+        if len(w) > 3 and w.endswith("s") and not w.endswith("ss"):
+            forms.add(w[:-1])
+        if len(w) > 4 and w.endswith("es"):
+            forms.add(w[:-2])
+        parts.append("(?:" + "|".join(re.escape(x) for x in sorted(forms, key=len, reverse=True)) + ")")
+    return re.search(r"(?<![a-z0-9])" + r"\s+".join(parts) + r"(?![a-z0-9])", text) is not None
 
 
 def run_checks(book, cid):
@@ -1900,16 +1964,29 @@ def run_checks(book, cid):
     # glossary / character name use
     full_src = "\n".join(src_map.values())
     full_en = "\n".join(tr.values()).lower().replace("-", " ")
-    rows = [(r, f) for r, f in entries_in(full_src, book.glossary())]
     # characters: only when the main name is there. A nickname or form of address (陆师兄 for
     # 陆香君) is rightly translated as that form (陸師兄 / Senior Brother Lu), not the full name.
-    rows += [(r, f) for r, f in entries_in(full_src, book.characters())]
-    for r, f in rows:
+    entries = book.glossary() + book.characters()
+    # Longest names first, and each found name is masked out of the Chinese before shorter ones are
+    # looked for: 筑基 inside 筑基丹 (Foundation Pill) does not ask for "Foundation Establishment".
+    found = {}
+    masked = full_src
+    for k in sorted(range(len(entries)),
+                    key=lambda k: -max([len(v) for v in variants(entries[k].get("zh"), "")] or [0])):
+        f = [v for v in variants(entries[k].get("zh"), "") if v and v in masked]
+        for v in sorted(f, key=len, reverse=True):
+            masked = masked.replace(v, "\x00")
+        if f:
+            found[k] = f
+    for k, r in enumerate(entries):  # report in table order
+        f = found.get(k)
+        if not f:
+            continue
         en = (r.get("en") or "").strip()
         if not en:
             continue
         options = [o.strip().lower().replace("-", " ") for o in en.split("/") if o.strip()]
-        if not any(o in full_en for o in options):
+        if not any(name_used(o, full_en, lang) for o in options):
             warnings.append("Name check: %s should appear as '%s' (fine if you used he/she or "
                             "another form on purpose)." % ("/".join(f), en))
     for pattern, min_hits, advice in (STYLE_LINT if lang == "en" else
@@ -2814,6 +2891,11 @@ def cmd_build(args):
     out("Built %d of %d chapter(s) (%d of them complete)." % (len(chapters), total_ch, complete))
     for p in made:
         out("  " + str(p))
+    if not book.cfg.get("title_en"):
+        out("NOTE: the book title is still the Chinese one (%s). Translate it into %s and run `%s "
+            "set title_en \"...\"`%s, then build again." % (
+                book.cfg.get("title", ""), book.lname, py_cmd(),
+                " (the Japanese title goes in title_en too)" if book.lang == "ja" else ""))
     nxt("Give the user these files. The .epub opens in Apple Books, Google Play Books, "
         "Calibre, or Kindle (via Send to Kindle).")
 

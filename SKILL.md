@@ -78,6 +78,9 @@ long book), tell the user; the translation still works, only titles will be miss
    TERM: 筑基 | Foundation Establishment | realm | 2nd cultivation realm
    ```
    Format: `CHAR: 中文 | English | gender | note | nicknames separated by /`.
+   Nicknames are other names for this one person (小凡, 林哥). Do not list titles and forms of
+   address as nicknames (师尊, 师父, 宗主, 长老, 老X): many people share them, and they are
+   translated as titles, not as the person's name.
    Gender: only when the text makes it clear (他/她, 师兄/师姐, 公子/姑娘); otherwise `unknown`.
    Never guess it from the name.
    **Keep the glossary to names and recurring special terms.** Every glossary entry found in a
@@ -186,7 +189,9 @@ After chapter 1, `next` prints TRIAL FINISHED. Then:
      they also introduced a few meaning slips that only the review catches.
 5. If the user wants to save money, they can switch to `novel.py set review spot`; explain that
    full review catches far more meaning errors.
-6. Only when they say to go on: `novel.py set trial false`, then continue the loop.
+6. If the book title is not translated yet (`build` prints a NOTE), translate it and run
+   `novel.py set title_en "..."` (for a Japanese book, the Japanese title goes there too).
+7. Only when they say to go on: `novel.py set trial false`, then continue the loop.
 
 ## Step 5 — Finish
 
