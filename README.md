@@ -53,7 +53,13 @@ Check the second part: if its Chinese retelling matches the original, the meanin
 
 ## Test results so far
 
-Small tests on the first chapters of three web novels with a cheap model (DeepSeek V4.1 Flash):
+All tests used a cheap model (DeepSeek V4.1 Flash) inside the WorkBuddy agent.
+
+**Compared with similar tools (November 2026).** Six translation tools, two chapters each: a public-domain classic, and an original xianxia chapter with 19 internet memes and 6 literal-translation traps written for the test. This tool scored 16.5 of 19 on the memes (third of six; the top four were within 1–2 points of each other), got every trap right and made no hard errors (no wrong genders, inconsistent names or broken titles). On a single chapter its quality is about the same as the others; what it adds shows up over many chapters.
+
+**Ten chapters of a real xianxia novel.** 15 passages (about 16,000 Chinese characters), roughly a minute per passage with the full review. The checks flagged 19 real problems, mostly a glossary term left out (a flying sword written as just "sword", a place name missing its "Domain"), and the review fixed 27 places on its own, 4 of them meaning errors. The run also showed 8 false warnings; v0.9.5 fixed them, and the same chapters re-checked gave 19 warnings, all real.
+
+**Earlier small tests** on the first chapters of three web novels:
 
 - With meaning errors planted on purpose after translation, the full review caught 7 of 7. With a spot review that checked about a quarter of the paragraphs, 6 of 24.
 - Three book examples edited by a second model changed 76% of the next chapter's paragraphs toward their voice (shorter, livelier sentences), compared with 8% from ten new rules. They also caused a few slips (a dropped exclamation, one phrase whose meaning flipped), which is why the review stays on by default.
@@ -63,6 +69,8 @@ These are small samples; treat them as a direction, not a guarantee.
 ## Cost
 
 Each passage is about 1,500 Chinese characters plus about 2,500 tokens of instructions and context: roughly 4,000 tokens in and 1,500 out to translate it, and about another 3,000 in and 1,500 out for the default review. A 1,000,000-character web novel is about 670 passages. Agents also re-send their conversation history, which adds more, so **start a new session every few chapters** (the agent continues where it stopped). Check what chapter 1 cost you before committing to a whole book.
+
+You don't need an API key: the tool runs inside your agent and uses whatever model the agent uses. In our test with WorkBuddy and DeepSeek V4.1 Flash, the agent's daily free credits covered roughly 30 chapters a day (credit prices change, so check your own). That is about four times what tools that call the model's API directly spend per chapter; the extra goes into the checks and the full review.
 
 ## Please read
 
