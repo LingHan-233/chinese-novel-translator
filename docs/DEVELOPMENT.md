@@ -76,7 +76,7 @@ init, candidates, scan, scan-apply, add, next, check, review(=polish), accept, s
 | v0.9.3 | 按"尽量自动"的方向：日语"中文说法照搬"自动警告 `JA_STYLE_LINT`（17 条，来自两轮测试）；内置日语示例 `lang/ja/examples.md`（5 段原创，含专门示范成语/网络用语的一段，任何题材都会选到）；共享用语表加 `default_ja` / `avoid_ja`，日语书的替代词字面直译警告从此生效（如 牛至→オレガノ） | 第三轮（真书第 7–9 章 + 第 418 章，8 passage / 282 段）：1 ERROR（真：过江之鲫 照搬出中文字 鯽）、4 WARNING（2 真 2 误报）；Style 警告 1 条、真问题、0 误报，但测试者自己又发现 4 处同类照搬不在规则里——**规则是"已知错误的回归测试"，召回率靠每轮补**；照搬频率约从每百段 7.3 降到 3.5（复核任务里的例子也有功劳）；替代词：用语表建议的 おちんちん 被采用，把它换成"牛"做探针时 Slang check 触发；暴露 3 个检查自身的问题（别名、标题汉字章号、15 字短段），v0.9.4 修。GLM 审阅示例和用语表：意思全部一致，改 3+5 处日语 |
 | v0.9.4 | 按第三轮修：人名检查只在原文出现正式名字时要求译名（陆师兄 这类称呼/别名只出现时不再要求 陸香君，英文同样受益）；日语数字检查不再拆开单个数字（第四百十八章 不再报 4、8）；日语 15–29 字短段"太短"门槛放宽到 0.4（原来逼得模型加词消警告）；单字 SLANG 被拒时说明原因和替代做法；status 跳过很多章时只显示首尾；JA_STYLE_LINT 加 8 条；按 GLM 审阅改示例 3 处、用语表 6 处 | 待测。英文版回归：任务文件完全相同 |
 | 2026-11-07 测试（v0.9.3/0.9.4，英文） | 同类项目对比 + 真书第 20–29 章实测，详见项目文档《测试总结_2026-11-07》《待修问题清单》 | **对比**（6 个工具各 2 章，DeepSeek V4.1 Flash）：网络梗 16.5/19，排第 3，前四名差 1–2 分，基本在噪声内；陷阱全对、无硬伤；约 3 分钟/章。失分：一个笑声梗译成鹅叫、blue in the face 用错、社牛偏弱。**真书 10 章 / 15 passage**：16 分钟（约 65 秒/passage），0 ERROR，27 WARNING（19 真，多为术语没落地；8 误报），复核主动改 27 处（4 处意思错误）。**成本**（WorkBuddy 国内版）：建书准备 6.92 积分，10 章 28.71 积分，约 2.9 积分/章，约为直接调 API 工具的 4 倍（多出的花在检查和全量复核）。书名没有翻译 |
-| v0.9.5 | 修 2026-11-07 测试的 8 个问题：英文数字检查按标点/破折号断开（一百——一百五十 不再读成 10150；连字符只连 twenty-one 这种），比例写法跳过整个第二个数（one in a hundred thousand）；术语检查先扣掉原文里更长的已登记术语（筑基丹 不再要求 筑基 的译名），英文比较忽略开头 the/a/an、接受单复数（同时保留旧的子串匹配，只会少报不会多报）；人名检查确认称谓别名（师尊、老曹）不报，SKILL.md 说明称谓不要登记成别名；复核任务新增"本书自己登记的 SLANG 是否符合本段语境"一节（spot 复核也会挑出这些段落）；英文 STYLE_LINT 加 blue in the face；书名未翻译时 init 的 NEXT、build 的末尾、SKILL.md 第 4 步都会提醒（日语书名也写在 title_en）；新增 `tests/test_checks.py`（17 条，新修的在 v0.9.4 上全部失败，"不能改坏"的两版都通过） | 回归（`workflow_run.py`，v0.9.4 vs v0.9.5，英文、日语各一次）：翻译任务文件完全相同；差别只有复核任务多出的本书 SLANG 核对一节、init 的 NEXT 和 build 末尾的书名提醒。真书复测待做 |
+| v0.9.5 | 修 2026-11-07 测试的 8 个问题：英文数字检查按标点/破折号断开（一百——一百五十 不再读成 10150；连字符只连 twenty-one 这种），比例写法跳过整个第二个数（one in a hundred thousand）；术语检查先扣掉原文里更长的已登记术语（筑基丹 不再要求 筑基 的译名），英文比较忽略开头 the/a/an、接受单复数（同时保留旧的子串匹配，只会少报不会多报）；人名检查确认称谓别名（师尊、老曹）不报，SKILL.md 说明称谓不要登记成别名；复核任务新增"本书自己登记的 SLANG 是否符合本段语境"一节（spot 复核也会挑出这些段落）；英文 STYLE_LINT 加 blue in the face；书名未翻译时 init 的 NEXT、build 的末尾、SKILL.md 第 4 步都会提醒（日语书名也写在 title_en）；新增 `tests/test_checks.py`（17 条，新修的在 v0.9.4 上全部失败，"不能改坏"的两版都通过） | 回归（`workflow_run.py`，v0.9.4 vs v0.9.5，英文、日语各一次）：翻译任务文件完全相同；差别只有复核任务多出的本书 SLANG 核对一节、init 的 NEXT 和 build 末尾的书名提醒。**真书复测（第 20–29 章，15 passage，同一 epub/bible/scan，测试者有意沿用上一轮触发告警的写法做 A/B）：8 条误报全部消失，19 条真问题一条不少（passage 分布完全一致），0 ERROR**；书名提醒在 init 和 build 都出现。这次测的是检查器：译文主体沿用上一轮定稿，所以用时（6′30″）和积分不能和 v0.9.3 比。第 20–29 章只有共享表里的梗（舔狗），本书自建 SLANG 的复核一节没触发，复核任务和 v0.9.3 逐字节相同，真实效果待测 |
 
 各轮测试报告由维护者保管，没有放进仓库（含真书原文）。
 
@@ -110,7 +110,7 @@ init, candidates, scan, scan-apply, add, next, check, review(=polish), accept, s
 - Claude 的 GitHub App 已对该仓库授权，可以直接 `git push origin main`。提交署名用 `LingHan-233 <LingHan-233@users.noreply.github.com>`。
 - 推送 tag 时经常被代理断开，所以 **Release 和 tag 由维护者在 GitHub 网页上创建**（Releases → Draft a new release → 输入新 tag → Publish）。目前只建了 v0.6.1 的 Release。
 - 每次发版：改 `VERSION`、`novel.py` 里的 `VERSION`、README 标题里的版本号；跑 `python -m unittest tests/test_checks.py`，并用 `tests/workflow_run.py` 和上一版对比；提交说明写清改了什么和 diff 结果；另外打一个 zip 发给维护者（解压后就是仓库内容，不含 `.git`）。
-- 维护者本机的 WorkBuddy 实际运行的是缓存目录 `E:\WorkBuddy-Data\cache\skills\chinese-novel-translator` 里的副本，换版本时安装目录和缓存目录都要更新。
+- 维护者本机：skill 目录 `~\.workbuddy\skills\chinese-novel-translator` 和 NEXT 里打印的缓存目录 `E:\WorkBuddy-Data\cache\skills\chinese-novel-translator` 是**同一份物理目录**（v0.9.5 复测时确认），替换一次即可。
 
 ## 8. 日语版（进行中）
 
@@ -140,6 +140,7 @@ init, candidates, scan, scan-apply, add, next, check, review(=polish), accept, s
 - [x] 第 3 步初版（v0.9.3）：`lang/ja/examples.md` 5 段 + 中文说法照搬的自动警告。待第二模型审阅、第三轮实测。
 - [x] 第三轮实测 + GLM 审阅示例和用语表（v0.9.3），问题在 v0.9.4 修。
 - [x] v0.9.4 推送到 main（README 标为"日语测试版"）。维护者的发布条件是"稳定、出错极少、文采损失少"：稳定和出错少有三轮数据支撑；意思准确度只有翻译模型自查，没有独立核对；文采约每 30 段一处中文说法照搬，中国流行文化梗在日语里会丢笑点。**最需要的是日语母语读者的反馈。**
+- [ ] 本书自建 SLANG 的复核核对（v0.9.5）还没在真实翻译里触发过：用含本书自建梗的章节（如真书第 418 章 牛牛）测一次。
 - [ ] 单字替代词（蛋、屌）无法登记：为防误匹配故意不支持，只能靠模型当场处理 + FLAG。若要支持，需要"只在本书确认是替代词的语境里匹配"的新机制。
 - [ ] 都市、历史题材的日语说明（`lang/ja/genres/urban.md`、`historical.md`）。
 - [ ] 用心理描写多、四字格多的段落（如真书第 1 章内心独白、后期回忆）测长度检查的下限（0.6）。
